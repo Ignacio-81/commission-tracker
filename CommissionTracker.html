@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CommissionTracker — Mercury · Astropay · Belo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --background:222 47% 6%; --foreground:210 40% 98%;
+    --card:222 47% 9%; --card-foreground:210 40% 98%;
+    --primary:173 80% 50%; --primary-foreground:222 47% 6%;
+    --secondary:222 47% 14%; --muted:222 47% 14%; --muted-foreground:215 20% 55%;
+    --accent:173 80% 50%; --destructive:0 72% 51%; --success:142 76% 45%; --warning:45 93% 55%;
+    --mercury:217 91% 60%; --astropay:280 70% 55%; --belo:45 100% 50%; --payoneer:24 100% 50%;
+    --grabrfi:173 70% 50%; --santander:0 75% 55%;
+    --border:222 47% 18%; --input:222 47% 14%; --ring:173 80% 50%; --radius:0.75rem;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:hsl(var(--background)); color:hsl(var(--foreground));
+    min-height:100vh; line-height:1.5;
+  }
+  .wrap{max-width:1280px;margin:0 auto;padding:0 20px 80px}
+  .muted{color:hsl(var(--muted-foreground))}
+  .glass-card{background:hsl(var(--card)/0.8);backdrop-filter:blur(16px);
+    border:1px solid hsl(var(--border)/0.6);border-radius:var(--radius);box-shadow:0 20px 50px -20px rgba(0,0,0,.6)}
+  .gradient-text{background:linear-gradient(90deg,hsl(173 80% 55%),hsl(190 90% 60%));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .glow-success{box-shadow:0 0 40px -10px hsl(var(--success)/0.5)}
+  /* header */
+  header.bar{position:sticky;top:0;z-index:40;background:hsl(var(--background)/0.85);
+    backdrop-filter:blur(14px);border-bottom:1px solid hsl(var(--border)/0.5)}
+  .bar-in{max-width:1280px;margin:0 auto;padding:16px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,hsl(173 80% 50%),hsl(190 85% 55%));
+    display:grid;place-items:center;color:hsl(var(--primary-foreground));font-weight:800;font-size:20px}
+  .brand h1{font-size:22px;font-weight:800}
+  .brand p{font-size:12px}
+  .bar-right{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .dot{width:9px;height:9px;border-radius:50%;background:hsl(var(--success));display:inline-block;margin-right:6px}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid hsl(var(--border));
+    background:hsl(var(--secondary));color:hsl(var(--foreground));padding:9px 14px;border-radius:10px;
+    font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:hsl(var(--primary)/0.6)}
+  .btn-primary{background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none}
+  .btn-primary:hover{filter:brightness(1.08)}
+  .spin{animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* hero */
+  .hero{text-align:center;padding:54px 0 30px}
+  .hero h2{font-size:clamp(34px,6vw,60px);font-weight:800;letter-spacing:-1px}
+  .hero p{max-width:560px;margin:14px auto 0;color:hsl(215 25% 70%);font-size:17px}
+  section{margin-top:34px}
+  h3.sec{font-size:20px;font-weight:700;margin-bottom:16px}
+  .grid{display:grid;gap:16px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:620px){.g2,.g3,.g4{grid-template-columns:1fr}}
+  /* rate cards */
+  .rate{padding:22px;position:relative;overflow:hidden}
+  .rate .lbl{font-size:13px;color:hsl(var(--muted-foreground));margin-bottom:8px}
+  .rate .val{font-size:34px;font-weight:800}
+  .rate .sub{font-size:12px;color:hsl(var(--muted-foreground));margin-top:6px}
+  .badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:4px}
+  .badge.up{background:hsl(var(--success)/0.15);color:hsl(var(--success))}
+  .badge.down{background:hsl(var(--destructive)/0.15);color:hsl(var(--destructive))}
+  .badge.man{background:hsl(var(--warning)/0.18);color:hsl(var(--warning))}
+  .rate .top{display:flex;justify-content:space-between;align-items:center}
+  /* flow */
+  .flow{padding:24px}
+  .route-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid hsl(var(--border)/0.4)}
+  .route-row:last-child{border:none}
+  .node{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+  .chip{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+  .arrow{color:hsl(var(--muted-foreground));font-size:18px}
+  /* calculator */
+  .calc-input{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:22px}
+  .field{flex:1;min-width:220px}
+  .field label{display:block;font-size:13px;color:hsl(var(--muted-foreground));margin-bottom:7px}
+  input[type=number]{width:100%;background:hsl(var(--input));border:1px solid hsl(var(--border));
+    color:hsl(var(--foreground));padding:13px 14px;border-radius:10px;font-size:16px;outline:none}
+  input[type=number]:focus{border-color:hsl(var(--ring))}
+  .route-card{padding:18px;border:1px solid hsl(var(--border)/0.6);border-radius:var(--radius);background:hsl(var(--card)/0.5)}
+  .route-card.best{border-color:hsl(var(--success));background:hsl(var(--success)/0.08)}
+  .route-card h4{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .step{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0;color:hsl(215 20% 70%)}
+  .step .ded{color:hsl(var(--destructive));font-weight:600;white-space:nowrap}
+  .route-tot{margin-top:12px;padding-top:12px;border-top:1px solid hsl(var(--border)/0.5)}
+  .route-tot .t{display:flex;justify-content:space-between;font-size:13px}
+  .route-tot .big{font-size:22px;font-weight:800;text-align:right}
+  .route-tot .rate-line{color:hsl(var(--primary));font-size:12px;text-align:right;margin-top:2px}
+  .save-banner{margin-top:18px;padding:18px 22px;border-radius:var(--radius);
+    background:hsl(var(--success)/0.1);border:1px solid hsl(var(--success)/0.4);display:flex;justify-content:space-between;align-items:center}
+  .save-banner .big{font-size:26px;font-weight:800;color:hsl(var(--success))}
+  /* table */
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:right;padding:13px 10px;border-bottom:1px solid hsl(var(--border)/0.4)}
+  th:first-child,td:first-child{text-align:left}
+  th{color:hsl(var(--muted-foreground));font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  .free{color:hsl(var(--success));font-weight:600}
+  .w-name{display:flex;align-items:center;gap:9px;font-weight:700}
+  .w-dot{width:10px;height:10px;border-radius:50%}
+  /* settings sheet */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);z-index:60;opacity:0;pointer-events:none;transition:.2s}
+  .overlay.open{opacity:1;pointer-events:auto}
+  .sheet{position:fixed;top:0;right:0;height:100%;width:420px;max-width:92vw;background:hsl(var(--card));
+    border-left:1px solid hsl(var(--border));z-index:70;transform:translateX(100%);transition:.25s;overflow-y:auto;padding:24px}
+  .sheet.open{transform:translateX(0)}
+  .sheet h3{font-size:18px;font-weight:700;margin-bottom:4px}
+  .sheet .grp{margin-top:22px}
+  .sheet .grp h5{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:hsl(var(--primary));margin-bottom:10px}
+  .cfg-row{margin-bottom:12px}
+  .cfg-row label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;color:hsl(215 20% 75%)}
+  .cfg-row input{padding:9px 11px;font-size:14px}
+  .arb{padding:24px}
+  .arb-step{display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px solid hsl(var(--border)/0.4);font-size:15px}
+  .arb-step .v{font-weight:800;font-size:18px}
+  .arb-res{margin-top:18px;padding:20px;border-radius:var(--radius)}
+  .arb-res.pos{background:hsl(var(--success)/0.1);border:1px solid hsl(var(--success)/0.4)}
+  .arb-res.neg{background:hsl(var(--destructive)/0.1);border:1px solid hsl(var(--destructive)/0.4)}
+  .arb-res .big{font-size:30px;font-weight:800}
+  .pos .big{color:hsl(var(--success))} .neg .big{color:hsl(var(--destructive))}
+  .read-box{padding:16px;border-radius:12px;background:hsl(var(--secondary));border:1px solid hsl(var(--border))}
+  .read-box .v{font-size:22px;font-weight:800;color:hsl(var(--primary));margin-top:4px}
+  .read-box .l{font-size:12px;color:hsl(var(--muted-foreground))}
+  .footer{margin-top:50px;text-align:center;color:hsl(var(--muted-foreground));font-size:12px}
+  canvas{max-height:300px}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <div class="logo">⚡</div>
+    <div class="brand">
+      <h1 class="gradient-text">CommissionTracker</h1>
+      <p class="muted">Mercury • Astropay • Belo</p>
+    </div>
+    <div class="bar-right">
+      <span class="muted" style="font-size:13px"><span class="dot"></span>Última actualización: <span id="lastUpd">—</span></span>
+      <button class="btn" id="refreshBtn" onclick="refreshData()"><span id="refIcon">⟳</span> Actualizar</button>
+      <button class="btn" onclick="toggleSheet(true)">⚙️ Mercado</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <h2>Compara y <span class="gradient-text">ahorra</span> en tus transferencias</h2>
+    <p>Analiza las comisiones y tasas de cambio de Mercury, Astropay y Belo para encontrar la mejor ruta para tus dólares.</p>
+  </div>
+
+  <div id="errBox"></div>
+
+  <!-- Alerts banner -->
+  <section id="alertBanner" style="margin-top:24px"></section>
+
+  <!-- Rate cards -->
+  <section class="grid g3" id="rateCards"></section>
+
+  <!-- Flow -->
+  <section class="glass-card flow">
+    <h3 class="sec">Flujo de Transferencia</h3>
+    <div id="flowRows"></div>
+  </section>
+
+  <!-- Calculator -->
+  <section class="glass-card flow">
+    <h3 class="sec">🧮 Calculadora de Transferencias</h3>
+    <div class="calc-input">
+      <div class="field">
+        <label>Monto a transferir (USD)</label>
+        <input type="number" id="calcAmount" value="1000" oninput="renderCalc()" />
+      </div>
+      <button class="btn btn-primary" onclick="renderCalc()">Calcular →</button>
+    </div>
+    <div class="grid g4" id="calcCards"></div>
+    <div id="saveBanner"></div>
+  </section>
+
+  <!-- Historical chart -->
+  <section class="glass-card flow">
+    <h3 class="sec">📈 Histórico — Mejor tasa efectiva (ARS por USD)</h3>
+    <canvas id="histChart"></canvas>
+    <p class="muted" style="font-size:12px;margin-top:10px">Cada actualización guarda un punto. El histórico se acumula en este navegador.</p>
+  </section>
+
+  <!-- Wallet fee cards -->
+  <section>
+    <h3 class="sec">Comisiones por Billetera</h3>
+    <div class="grid g4" id="walletCards"></div>
+  </section>
+
+  <!-- Rates table -->
+  <section class="glass-card flow">
+    <h3 class="sec">Tabla comparativa</h3>
+    <div style="overflow-x:auto"><table id="ratesTable"></table></div>
+  </section>
+
+  <!-- Arbitrage -->
+  <section class="glass-card arb">
+    <h3 class="sec">🔄 Arbitrage Loop Calculator (Bucle / Puré)</h3>
+    <div class="calc-input">
+      <div class="field">
+        <label>Monto a transferir (USD)</label>
+        <input type="number" id="arbAmount" value="1000" oninput="renderArb()" />
+      </div>
+      <div class="read-box field"><div class="l">Dólar MEP (Santander)</div><div class="v" id="arbMep">—</div></div>
+      <div class="read-box field"><div class="l">Fee Operación (Santander)</div><div class="v" id="arbFee">Gratis (0%)</div></div>
+    </div>
+    <div id="arbSteps"></div>
+    <div id="arbResult"></div>
+  </section>
+
+  <div class="footer">
+    Tasas FX en vivo vía CriptoYa (Belo USDC/ARS y AstroPay USDT/ARS = bid real; MEP/CCL = AL30 24hs). Las ediciones manuales del panel de Mercado tienen precedencia y se marcan "Manual".<br/>
+    Comisiones verificadas con fuentes oficiales (jun-2026): Mercury, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: AstroPay (recepción/conversión) y GrabrFi USD→USDT — ajustables en el panel.<br/>
+    Herramienta informativa — no constituye asesoramiento financiero. Verificá comisiones antes de operar.
+  </div>
+</div>
+
+<!-- Settings sheet -->
+<div class="overlay" id="overlay" onclick="toggleSheet(false)"></div>
+<aside class="sheet" id="sheet">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><h3>⚙️ Mercado</h3><p class="muted" style="font-size:13px">Tasas y comisiones editables</p></div>
+    <button class="btn" onclick="toggleSheet(false)">✕</button>
+  </div>
+  <button class="btn" style="margin-top:14px" onclick="resetConfig()">↺ Restablecer valores</button>
+  <div id="cfgRates" class="grp"></div>
+  <div id="cfgFees" class="grp"></div>
+</aside>
+
+<script>
+/* ---------- Config ---------- */
+const DEFAULTS = {
+  astropayUsdToArs:1474, astropayUsdtToArs:1475,
+  beloUsdtToArs:1470,
+  mercuryAchOut:0, mercuryWireOut:15,
+  grabrfiAchOutPct:0.3, grabrfiAchOutMin:1, grabrfiAchOutMax:5,
+  grabrfiUsdToUsdtPct:0.8,
+  grabrfiUsdtWithdrawPct:1.1, grabrfiUsdtWithdrawFixed:1,
+  astropayReceiveFee:0,
+  beloAchInPct:0.3, beloAchInMin:0.5,
+  beloUsdToUsdtSpread:4,
+  payoneerAchIn:1, payoneerAchOutFixed:1.5, payoneerAchOutSmall:4, payoneerSmallThreshold:400
+};
+const RATE_FIELDS=[
+  ['astropayUsdtToArs','AstroPay USDT→ARS'],['beloUsdtToArs','Belo USDT→ARS'],
+  ['astropayUsdToArs','AstroPay USD→ARS']
+];
+const FEE_FIELDS=[
+  ['mercuryAchOut','Mercury ACH out (USD)'],['mercuryWireOut','Mercury Wire intl (USD)'],
+  ['grabrfiAchOutPct','GrabrFi ACH out %'],['grabrfiAchOutMin','GrabrFi ACH out mín'],['grabrfiAchOutMax','GrabrFi ACH out máx'],
+  ['grabrfiUsdToUsdtPct','GrabrFi USD→USDT %'],['grabrfiUsdtWithdrawPct','GrabrFi USDT withdraw %'],['grabrfiUsdtWithdrawFixed','GrabrFi USDT withdraw fijo'],
+  ['astropayReceiveFee','AstroPay recepción (USD)'],
+  ['beloAchInPct','Belo ACH in %'],['beloAchInMin','Belo ACH in mín'],
+  ['beloUsdToUsdtSpread','Belo spread USD→USDT % (Santander)'],
+  ['payoneerAchIn','Payoneer ACH in %'],['payoneerAchOutFixed','Payoneer retiro USD fijo'],['payoneerAchOutSmall','Payoneer retiro <umbral (USD)'],['payoneerSmallThreshold','Payoneer umbral monto chico (USD)']
+];
+
+let config={}, manualKeys=[];
+function loadConfig(){
+  try{config={...DEFAULTS,...JSON.parse(localStorage.getItem('marketConfig.v1')||'{}')}}catch(e){config={...DEFAULTS}}
+  try{manualKeys=JSON.parse(localStorage.getItem('marketConfig.manualKeys.v1')||'[]')}catch(e){manualKeys=[]}
+}
+function saveConfig(){
+  localStorage.setItem('marketConfig.v1',JSON.stringify(config));
+  localStorage.setItem('marketConfig.manualKeys.v1',JSON.stringify(manualKeys));
+}
+function setConfigKey(k,v){
+  config[k]=parseFloat(v); if(!manualKeys.includes(k))manualKeys.push(k);
+  saveConfig(); renderAll();
+}
+function resetConfig(){config={...DEFAULTS};manualKeys=[];saveConfig();refreshData();}
+
+/* ---------- Live rates ---------- */
+let rates={belo:null,astropay:null,mep:null,ccl:null,payoneer:null,grabrfi:null,santander:null};
+let lastRefresh=null, isLoading=false;
+
+async function fetchJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(u);return r.json();}
+async function refreshData(){
+  if(isLoading)return; isLoading=true; document.getElementById('refIcon').className='spin';
+  document.getElementById('errBox').innerHTML='';
+  try{
+    const [dolar,astro,belo]=await Promise.all([
+      fetchJSON('https://criptoya.com/api/dolar'),
+      fetchJSON('https://criptoya.com/api/astropay/usdt/ars/1'),
+      fetchJSON('https://criptoya.com/api/belo/usdc/ars/1')
+    ]);
+    const mep=dolar?.mep?.al30?.['24hs']?.price;
+    const ccl=dolar?.ccl?.al30?.['24hs']?.price;
+    rates.mep=mep; rates.ccl=ccl;
+    rates.astropay=astro.totalBid||astro.bid;
+    rates.belo=belo.totalBid||belo.bid;
+    rates.payoneer=ccl?ccl*0.99:null;
+    rates.grabrfi=mep; rates.santander=mep;
+    // sync non-manual config rate keys from API
+    if(!manualKeys.includes('astropayUsdtToArs')) config.astropayUsdtToArs=rates.astropay;
+    if(!manualKeys.includes('astropayUsdToArs'))  config.astropayUsdToArs=rates.astropay;
+    if(!manualKeys.includes('beloUsdtToArs'))     config.beloUsdtToArs=rates.belo;
+    saveConfig();
+    lastRefresh=new Date();
+    snapshot();
+  }catch(e){
+    document.getElementById('errBox').innerHTML=
+      '<div class="glass-card" style="padding:16px;border-color:hsl(var(--destructive)/0.5);color:hsl(var(--destructive))">⚠ No se pudieron cargar tasas en vivo. Mostrando últimos valores guardados.</div>';
+  }finally{
+    isLoading=false; document.getElementById('refIcon').className='';
+    renderAll();
+  }
+}
+
+/* ---------- Wallets ---------- */
+function wallets(){
+  return [
+    {name:'Mercury',slug:'mercury',tone:'--mercury',achIn:0,achInTxt:'Gratis',achOut:config.mercuryAchOut,achOutTxt:config.mercuryAchOut?('$'+config.mercuryAchOut):'Gratis',rate:null},
+    {name:'Payoneer',slug:'payoneer',tone:'--payoneer',achIn:config.payoneerAchIn,achInTxt:config.payoneerAchIn+'%',achOut:config.payoneerAchOutFixed,achOutTxt:'$'+config.payoneerAchOutFixed+' USD fijo',rate:rates.payoneer},
+    {name:'GrabrFi',slug:'grabrfi',tone:'--grabrfi',achIn:0,achInTxt:'Gratis',achOut:config.grabrfiAchOutPct,achOutTxt:config.grabrfiAchOutPct+'% (mín $'+config.grabrfiAchOutMin+', máx $'+config.grabrfiAchOutMax+')',rate:rates.grabrfi},
+    {name:'Astropay',slug:'astropay',tone:'--astropay',achIn:0,achInTxt:'Gratis',achOut:3.5,achOutTxt:'$3.5 USD',rate:config.astropayUsdtToArs},
+    {name:'Belo',slug:'belo',tone:'--belo',achIn:config.beloAchInPct,achInTxt:config.beloAchInPct+'% (mín $'+config.beloAchInMin+')',achOut:5,achOutTxt:'$5 USD',rate:config.beloUsdtToArs},
+    {name:'Santander',slug:'santander',tone:'--santander',achIn:0,achInTxt:'Gratis',achOut:0,achOutTxt:'Gratis',rate:rates.santander}
+  ];
+}
+
+/* ---------- Calculation (per spec) ---------- */
+const clamp=(v,mn,mx)=>Math.max(mn,Math.min(mx,v));
+function step(from,to,type,fee,feeType,amount,resultAmount){return {from,to,type,fee,feeType,amount,resultAmount};}
+
+function calculateComparison(amount){
+  const c=config, beloRate=config.beloUsdtToArs, mercAch=c.mercuryAchOut;
+  // R1 AstroPay (Crypto)
+  let a=amount-mercAch;
+  const ga=clamp(a*c.grabrfiAchOutPct/100,c.grabrfiAchOutMin,c.grabrfiAchOutMax); let b=a-ga;
+  const cv=b*c.grabrfiUsdToUsdtPct/100; let cc=b-cv;
+  const wd=cc*c.grabrfiUsdtWithdrawPct/100+c.grabrfiUsdtWithdrawFixed; let d=cc-wd-c.astropayReceiveFee;
+  const r1ARS=d*c.astropayUsdtToArs;
+  const r1={id:'astropay',name:'Mercury → GrabrFi → USDT → AstroPay',finalAmountARS:r1ARS,
+    steps:[
+      step('Mercury','GrabrFi','ach',mercAch,'fixed',amount,a),
+      step('GrabrFi ACH out','GrabrFi','ach',c.grabrfiAchOutPct,'percentage',a,b),
+      step('GrabrFi USD','GrabrFi USDT','conversion',c.grabrfiUsdToUsdtPct,'percentage',b,cc),
+      step('GrabrFi USDT','Red Cripto','conversion',wd,'fixed',cc,d),
+      step('AstroPay (USDT)','AstroPay (ARS)','conversion',c.astropayReceiveFee,'fixed',d,r1ARS)
+    ]};
+  // R2 Payoneer → Belo
+  let p=amount-mercAch;
+  const p1=p*c.payoneerAchIn/100; p-=p1;
+  // Retiro Payoneer USD→USD (a la cuenta US de Belo): fee FIJO desde mar-2025
+  // $1.5 estándar (<$50k/mes); $4 si el monto es < umbral (~$400).
+  const p2=(p<c.payoneerSmallThreshold)?c.payoneerAchOutSmall:c.payoneerAchOutFixed; p-=p2;
+  const pb=Math.max(p*c.beloAchInPct/100,c.beloAchInMin); p-=pb;
+  const r2ARS=p*beloRate;
+  const r2={id:'payoneer',name:'Mercury → Payoneer → Belo',finalAmountARS:r2ARS,
+    steps:[
+      step('Mercury','Payoneer','ach',mercAch,'fixed',amount,amount-mercAch),
+      step('Payoneer recepción','Payoneer','ach',c.payoneerAchIn,'percentage',amount-mercAch,amount-mercAch-p1),
+      step('Payoneer retiro USD','Belo','ach',p2,'fixed',amount-mercAch-p1,amount-mercAch-p1-p2),
+      step('Belo recepción','Belo','ach',pb,'fixed',amount-mercAch-p1-p2,p),
+      step('Belo (USD)','Belo (ARS)','conversion',0,'fixed',p,r2ARS)
+    ]};
+  // R3 GrabrFi → Belo
+  let g=amount-mercAch;
+  const g1=clamp(g*c.grabrfiAchOutPct/100,c.grabrfiAchOutMin,c.grabrfiAchOutMax); g-=g1;
+  const g2=Math.max(g*c.beloAchInPct/100,c.beloAchInMin); g-=g2;
+  const r3ARS=g*beloRate;
+  const r3={id:'grabrfi',name:'Mercury → GrabrFi → Belo',finalAmountARS:r3ARS,
+    steps:[
+      step('Mercury','GrabrFi','ach',mercAch,'fixed',amount,amount-mercAch),
+      step('GrabrFi','Belo','ach',c.grabrfiAchOutPct,'percentage',amount-mercAch,amount-mercAch-g1),
+      step('Belo recepción','Belo','ach',g2,'fixed',amount-mercAch-g1,g),
+      step('Belo (USD)','Belo (ARS)','conversion',0,'fixed',g,r3ARS)
+    ]};
+  // R4 Santander Wire → Belo  (NO USDT→ARS step; 4% spread only)
+  let s=amount-c.mercuryWireOut;
+  const spreadFee=s*c.beloUsdToUsdtSpread/100; s-=spreadFee;
+  const r4ARS=s*beloRate;
+  const r4={id:'santander',name:'Mercury Wire → Santander → Belo',finalAmountARS:r4ARS,
+    steps:[
+      step('Mercury','Santander','wire',c.mercuryWireOut,'fixed',amount,amount-c.mercuryWireOut),
+      step('Santander recepción Wire','Santander','wire',0,'fixed',amount-c.mercuryWireOut,amount-c.mercuryWireOut),
+      step('Santander (USD)','Belo (USD)','internal',0,'fixed',amount-c.mercuryWireOut,amount-c.mercuryWireOut),
+      step('Spread local USD→USDT','Belo','conversion',c.beloUsdToUsdtSpread,'percentage',amount-c.mercuryWireOut,s),
+      step('Belo (USD)','Belo (ARS)','conversion',0,'fixed',s,r4ARS)
+    ]};
+  const paths={astropay:r1,payoneer:r2,grabrfi:r3,santander:r4};
+  const arr=[r1,r2,r3,r4];
+  const best=arr.reduce((m,x)=>x.finalAmountARS>m.finalAmountARS?x:m);
+  const worst=arr.reduce((m,x)=>x.finalAmountARS<m.finalAmountARS?x:m);
+  const savings=best.finalAmountARS-worst.finalAmountARS;
+  return {...paths,recommendation:best.id,best,savings,savingsPercentage:savings/best.finalAmountARS*100};
+}
+
+/* ---------- Formatting ---------- */
+const fmtARS=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(n);
+const fmtUSD=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(n);
+const fmtRate=n=>n?new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(n):'—';
+
+/* ---------- Render ---------- */
+function isMan(k){return manualKeys.includes(k);}
+function renderRateCards(){
+  const data=[
+    {name:'Astropay',rate:config.astropayUsdtToArs,man:isMan('astropayUsdtToArs'),tone:'--astropay'},
+    {name:'Belo',rate:config.beloUsdtToArs,man:isMan('beloUsdtToArs'),tone:'--belo'},
+    {name:'Santander (MEP)',rate:rates.santander,man:false,tone:'--santander'}
+  ];
+  document.getElementById('rateCards').innerHTML=data.map(d=>`
+    <div class="glass-card rate" style="border-left:3px solid hsl(var(${d.tone}))">
+      <div class="top"><span class="lbl">${d.name}</span>
+        ${d.man?'<span class="badge man">Manual</span>':'<span class="badge up">en vivo</span>'}</div>
+      <div class="val">${d.rate?'$'+fmtRate(d.rate):'—'}</div>
+      <div class="sub">1 USD → ARS</div>
+    </div>`).join('');
+}
+function flowRow(nodes){
+  return '<div class="route-row">'+nodes.map((n,i)=>
+    (i?'<span class="arrow">→</span>':'')+
+    `<span class="node"><span class="chip" style="background:hsl(var(${n.t}))">${n.c}</span>${n.l}</span>`
+  ).join('')+'</div>';
+}
+function renderFlow(){
+  document.getElementById('flowRows').innerHTML=[
+    flowRow([{c:'$',l:'Mercury',t:'--mercury'},{c:'GF',l:'GrabrFi',t:'--grabrfi'},{c:'₮',l:'USDT (Tron/BSC)',t:'--success'},{c:'AP',l:'AstroPay',t:'--astropay'},{c:'$',l:'ARS',t:'--success'}]),
+    flowRow([{c:'$',l:'Mercury',t:'--mercury'},{c:'P',l:'Payoneer',t:'--payoneer'},{c:'B',l:'Belo',t:'--belo'},{c:'$',l:'ARS',t:'--success'}]),
+    flowRow([{c:'$',l:'Mercury',t:'--mercury'},{c:'GF',l:'GrabrFi',t:'--grabrfi'},{c:'B',l:'Belo',t:'--belo'},{c:'$',l:'ARS',t:'--success'}]),
+    flowRow([{c:'$',l:'Mercury (Wire)',t:'--mercury'},{c:'S',l:'Santander',t:'--santander'},{c:'B',l:'Belo',t:'--belo'},{c:'$',l:'ARS',t:'--success'}])
+  ].join('');
+}
+function stepLine(s){
+  let txt;
+  if(s.feeType==='percentage'&&s.fee>0) txt=`-${fmtUSD(s.amount*s.fee/100)} (${s.fee}%)`;
+  else if(s.feeType==='fixed') txt=s.fee>0?`-${fmtUSD(s.fee)}`:'-US$ 0,00';
+  else txt='—';
+  return `<div class="step"><span>${s.from}${s.to&&s.to!==s.from?' → '+s.to:''}</span><span class="ded">${txt}</span></div>`;
+}
+function renderCalc(){
+  const amt=parseFloat(document.getElementById('calcAmount').value)||0;
+  const r=calculateComparison(amt);
+  const order=['astropay','payoneer','grabrfi','santander'];
+  document.getElementById('calcCards').innerHTML=order.map(id=>{
+    const p=r[id], best=r.recommendation===id;
+    return `<div class="route-card ${best?'best':''}">
+      <h4>${p.name} ${best?'<span class="badge up">↗ Mejor</span>':''}</h4>
+      ${p.steps.map(stepLine).join('')}
+      <div class="route-tot">
+        <div class="t"><span class="muted">Total:</span><span class="big">${fmtARS(p.finalAmountARS)}</span></div>
+        <div class="rate-line">1 USD = ${fmtRate(p.finalAmountARS/amt)} ARS</div>
+      </div></div>`;
+  }).join('');
+  document.getElementById('saveBanner').innerHTML=`
+    <div class="save-banner">
+      <div><div class="muted" style="font-size:13px">Ahorro usando ${r.best.name.split('→').pop().trim()} (mejor ruta):</div>
+      <div class="big">+${fmtARS(r.savings)} (${r.savingsPercentage.toFixed(2)}%)</div></div>
+      <div style="font-size:26px">📈</div>
+    </div>`;
+}
+function renderWallets(){
+  document.getElementById('walletCards').innerHTML=wallets().map(w=>`
+    <div class="glass-card rate" style="border-left:3px solid hsl(var(${w.tone}))">
+      <div class="w-name" style="margin-bottom:14px"><span class="w-dot" style="background:hsl(var(${w.tone}))"></span>${w.name}</div>
+      <div class="step"><span class="muted">ACH Entrada</span><span class="${w.achInTxt==='Gratis'?'free':''}">${w.achInTxt}</span></div>
+      <div class="step"><span class="muted">ACH Salida</span><span class="${w.achOutTxt==='Gratis'?'free':''}">${w.achOutTxt}</span></div>
+      <div class="step" style="margin-top:8px"><span class="muted">Tasa USD → ARS</span>
+        <span style="color:hsl(var(--primary));font-weight:700">${w.rate?'$'+fmtRate(w.rate):'—'}</span></div>
+    </div>`).join('');
+}
+function renderTable(){
+  const rows=wallets().map(w=>`<tr>
+    <td><span class="w-name"><span class="w-dot" style="background:hsl(var(${w.tone}))"></span>${w.name}</span></td>
+    <td class="${w.achInTxt==='Gratis'?'free':''}">${w.achInTxt}</td>
+    <td class="${w.achOutTxt==='Gratis'?'free':''}">${w.achOutTxt}</td>
+    <td>${w.rate?fmtRate(w.rate):'—'}</td></tr>`).join('');
+  document.getElementById('ratesTable').innerHTML=
+    `<thead><tr><th>Billetera</th><th>ACH Entrada</th><th>ACH Salida</th><th>Tasa USD→ARS</th></tr></thead><tbody>${rows}</tbody>`;
+}
+function renderArb(){
+  const amt=parseFloat(document.getElementById('arbAmount').value)||0;
+  const r=calculateComparison(amt);
+  const mep=rates.santander||config.beloUsdtToArs;
+  const santAchOut=0;
+  const divisor=mep*(1+santAchOut/100);
+  const finalUSD=r.best.finalAmountARS/divisor;
+  const profit=finalUSD-amt, roi=amt?profit/amt*100:0, pos=profit>0;
+  document.getElementById('arbMep').textContent='$'+fmtRate(mep)+' ARS';
+  document.getElementById('arbSteps').innerHTML=`
+    <div class="arb-step"><span>1. Capital Inicial:</span><span class="v">${fmtUSD(amt)}</span></div>
+    <div class="arb-step"><span>2. Conversión Máxima a Pesos:<br/><span class="muted" style="font-size:12px">vía ${r.best.name.replace('Mercury → ','').replace('Mercury Wire → ','')}</span></span><span class="v">${fmtARS(r.best.finalAmountARS)}</span></div>
+    <div class="arb-step"><span>3. Retorno en Dólar MEP:</span><span class="v">${fmtUSD(finalUSD)}</span></div>`;
+  document.getElementById('arbResult').innerHTML=`
+    <div class="arb-res ${pos?'pos':'neg'}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div class="muted" style="font-size:13px">Resultado del ciclo:</div>
+        <div class="big">${pos?'+':''}${fmtUSD(profit)}</div>
+        <div style="font-size:13px;font-weight:600">ROI: ${pos?'+':''}${roi.toFixed(2)}%</div></div>
+        <div style="font-size:30px">${pos?'📈':'📉'}</div>
+      </div></div>`;
+}
+function renderConfigPanel(){
+  const f=(arr)=>arr.map(([k,lbl])=>`
+    <div class="cfg-row"><label>${lbl} ${isMan(k)?'<span class="badge man">Manual</span>':''}</label>
+    <input type="number" step="any" value="${config[k]}" onchange="setConfigKey('${k}',this.value)"/></div>`).join('');
+  document.getElementById('cfgRates').innerHTML='<h5>Tasas</h5>'+f(RATE_FIELDS);
+  document.getElementById('cfgFees').innerHTML='<h5>Comisiones</h5>'+f(FEE_FIELDS);
+}
+/* ---------- Alerts ---------- */
+let alertCfg={threshold:1,notify:false}, lastNotified=0;
+try{alertCfg={...alertCfg,...JSON.parse(localStorage.getItem('alerts.v1')||'{}')}}catch(e){}
+function saveAlertCfg(){localStorage.setItem('alerts.v1',JSON.stringify(alertCfg));}
+function setThreshold(v){alertCfg.threshold=parseFloat(v)||0;saveAlertCfg();renderAlert();}
+async function toggleNotify(){
+  if(alertCfg.notify){alertCfg.notify=false;saveAlertCfg();renderAlert();return;}
+  if(typeof Notification==='undefined'){alert('Tu navegador no soporta notificaciones.');return;}
+  if(Notification.permission!=='granted')await Notification.requestPermission();
+  alertCfg.notify=Notification.permission==='granted';saveAlertCfg();renderAlert();
+}
+function currentRoi(){
+  const r=calculateComparison(1000);const mep=rates.santander||config.beloUsdtToArs;
+  if(!mep)return -Infinity;
+  return (r.best.finalAmountARS/mep-1000)/1000*100;
+}
+function renderAlert(){
+  const roi=currentRoi(); if(!isFinite(roi))return;
+  const active=roi>=alertCfg.threshold;
+  if(active&&alertCfg.notify&&!lastNotified&&typeof Notification!=='undefined'&&Notification.permission==='granted'){
+    new Notification('CommissionTracker — Oportunidad de puré 📈',{body:`El arbitraje MEP rinde ${roi.toFixed(2)}% (umbral ${alertCfg.threshold}%).`});
+    lastNotified=Date.now();
+  }
+  if(!active)lastNotified=0;
+  document.getElementById('alertBanner').innerHTML=`
+    <div class="glass-card" style="padding:20px;border:1px solid ${active?'hsl(var(--success)/0.5)':'hsl(var(--border)/0.6)'};${active?'box-shadow:0 0 40px -10px hsl(var(--success)/0.5)':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:24px">${active?'📈':'⚠️'}</span>
+          <div>
+            <div style="font-weight:700">${active?`¡Oportunidad de puré! ROI ${roi.toFixed(2)}%`:'Sin oportunidad por ahora'}</div>
+            <div class="muted" style="font-size:13px">${active?`Supera tu umbral de ${alertCfg.threshold}%. Buen momento para el ciclo.`:`Arbitraje actual: ${roi.toFixed(2)}% · umbral: ${alertCfg.threshold}%`}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <label class="muted" style="display:flex;align-items:center;gap:8px;font-size:13px">Umbral %
+            <input type="number" step="0.1" value="${alertCfg.threshold}" onchange="setThreshold(this.value)" style="width:80px;padding:7px 10px"/></label>
+          <button class="btn" onclick="toggleNotify()">${alertCfg.notify?'🔔 Avisos ON':'🔕 Activar avisos'}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderAll(){
+  document.getElementById('lastUpd').textContent=lastRefresh?lastRefresh.toLocaleTimeString('es-AR'):'—';
+  renderRateCards();renderAlert();renderFlow();renderCalc();renderWallets();renderTable();renderArb();renderConfigPanel();renderChart();
+}
+
+/* ---------- History / chart ---------- */
+function snapshot(){
+  try{
+    const h=JSON.parse(localStorage.getItem('history.v1')||'[]');
+    const r=calculateComparison(1000);
+    h.push({t:Date.now(),rate:r.best.finalAmountARS/1000,route:r.recommendation});
+    if(h.length>500)h.shift();
+    localStorage.setItem('history.v1',JSON.stringify(h));
+  }catch(e){}
+}
+let chart=null;
+function renderChart(){
+  let h=[]; try{h=JSON.parse(localStorage.getItem('history.v1')||'[]')}catch(e){}
+  const labels=h.map(p=>new Date(p.t).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));
+  const data=h.map(p=>p.rate);
+  const ctx=document.getElementById('histChart');
+  if(chart)chart.destroy();
+  chart=new Chart(ctx,{type:'line',data:{labels,datasets:[{
+    label:'ARS por USD (mejor ruta)',data,borderColor:'hsl(173,80%,55%)',
+    backgroundColor:'rgba(45,212,191,0.12)',fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'#cbd5e1'}}},
+      scales:{x:{ticks:{color:'#64748b',maxTicksLimit:8},grid:{color:'rgba(148,163,184,0.08)'}},
+              y:{ticks:{color:'#64748b'},grid:{color:'rgba(148,163,184,0.08)'}}}}});
+}
+
+/* ---------- Sheet ---------- */
+function toggleSheet(open){
+  document.getElementById('sheet').classList.toggle('open',open);
+  document.getElementById('overlay').classList.toggle('open',open);
+}
+
+/* ---------- Init ---------- */
+loadConfig(); renderAll(); refreshData();
+setInterval(refreshData,5*60*1000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshData();});
+</script>
+</body>
+</html>
