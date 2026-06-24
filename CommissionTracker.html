@@ -2,7 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0f1d" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="CommissionTracker" />
+<meta name="description" content="Compará rutas USD→ARS (Mercury, GrabrFi, AstroPay, Belo) y calculá el ROI del puré MEP en vivo." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232dd4bf'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%230a0f1d'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E" />
 <title>CommissionTracker — Mercury · Astropay · Belo</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -128,6 +135,55 @@
   .read-box .l{font-size:12px;color:hsl(var(--muted-foreground))}
   .footer{margin-top:50px;text-align:center;color:hsl(var(--muted-foreground));font-size:12px}
   canvas{max-height:300px}
+
+  /* ============ Mobile (≤640px) ============ */
+  @media(max-width:640px){
+    /* respeta el notch / barra del sistema */
+    .wrap{padding:0 12px calc(72px + env(safe-area-inset-bottom))}
+    .bar-in{padding:10px 12px;gap:10px}
+    header.bar{padding-top:env(safe-area-inset-top)}
+    .logo{width:38px;height:38px;font-size:17px}
+    .brand h1{font-size:18px}
+    .brand p{font-size:11px}
+    /* en el header solo dejamos los botones; el timestamp baja a su línea */
+    .bar-right{width:100%;margin-left:0;gap:8px}
+    .bar-right .muted{order:3;width:100%;font-size:12px;margin-top:2px}
+    .bar-right .btn{flex:1;justify-content:center}
+
+    .hero{padding:30px 0 18px}
+    .hero h2{font-size:30px;letter-spacing:-.5px}
+    .hero p{font-size:15px;margin-top:10px}
+    section{margin-top:22px}
+    h3.sec{font-size:18px;margin-bottom:12px}
+
+    /* touch targets cómodos */
+    .btn{padding:11px 14px;min-height:44px}
+    input[type=number]{padding:14px;font-size:16px}     /* 16px evita el zoom de iOS */
+
+    .flow,.arb{padding:16px}
+    .rate{padding:18px}
+    .rate .val{font-size:28px}
+
+    /* calculadora: input y botón a full ancho, apilados */
+    .calc-input{gap:12px}
+    .field{min-width:100%}
+    .calc-input .btn-primary{width:100%;justify-content:center}
+
+    /* rutas: el deducible no se corta */
+    .route-card{padding:16px}
+    .step{font-size:13px}
+
+    /* banners y resultados apilan en vertical */
+    .save-banner{flex-direction:column;align-items:flex-start;gap:10px}
+    .arb-res > div{flex-direction:column;align-items:flex-start!important;gap:10px}
+
+    /* tabla: scroll horizontal con pista visual */
+    table{font-size:13px;min-width:460px}
+    th,td{padding:11px 8px}
+
+    /* panel de Mercado a pantalla completa */
+    .sheet{width:100%;max-width:100%;padding:20px 16px calc(20px + env(safe-area-inset-bottom))}
+  }
 </style>
 </head>
 <body>
