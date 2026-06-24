@@ -1,13 +1,8 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Settings2, RotateCcw, X } from "lucide-react";
 import type { MarketConfig } from "../hooks/useCommissionData";
 
-const RATE_FIELDS: [keyof MarketConfig, string][] = [
-  ["astropayUsdtToArs", "AstroPay USDT→ARS"],
-  ["beloUsdtToArs", "Belo USDT→ARS"],
-  ["binanceUsdtToArs", "Binance P2P USDT→ARS"],
-  ["astropayUsdToArs", "AstroPay USD→ARS"],
-];
 const FEE_FIELDS: [keyof MarketConfig, string][] = [
   ["mercuryAchOut", "Mercury ACH out (USD)"],
   ["mercuryWireOut", "Mercury Wire intl (USD)"],
@@ -60,29 +55,30 @@ export default function MarketConfigPanel({ config, onChange, onReset, manualKey
         <Settings2 className="h-4 w-4" /> Mercado
       </button>
 
-      <div onClick={() => setOpen(false)}
-        className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition ${open ? "opacity-100" : "pointer-events-none opacity-0"}`} />
-      <aside className={`fixed right-0 top-0 z-[60] h-full w-[420px] max-w-[92vw] overflow-y-auto border-l border-border bg-card p-6 transition-transform ${open ? "translate-x-0" : "translate-x-full"}`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold">Mercado</h3>
-            <p className="text-sm text-muted-foreground">Tasas y comisiones editables</p>
-          </div>
-          <button onClick={() => setOpen(false)} className="rounded-lg border border-border p-2"><X className="h-4 w-4" /></button>
-        </div>
-        <button onClick={onReset}
-          className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-3.5 py-2 text-sm font-semibold">
-          <RotateCcw className="h-4 w-4" /> Restablecer valores
-        </button>
-        <div className="mt-6">
-          <h5 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-primary">Tasas</h5>
-          {field(RATE_FIELDS)}
-        </div>
-        <div className="mt-6">
-          <h5 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-primary">Comisiones</h5>
-          {field(FEE_FIELDS)}
-        </div>
-      </aside>
+      {createPortal(
+        <>
+          <div onClick={() => setOpen(false)}
+            className={`fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm transition ${open ? "opacity-100" : "pointer-events-none opacity-0"}`} />
+          <aside className={`fixed right-0 top-0 z-[110] h-full w-[420px] max-w-[92vw] overflow-y-auto border-l border-border bg-card p-6 transition-transform ${open ? "translate-x-0" : "translate-x-full"}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold">Mercado</h3>
+                <p className="text-sm text-muted-foreground">Comisiones editables</p>
+              </div>
+              <button onClick={() => setOpen(false)} className="rounded-lg border border-border p-2"><X className="h-4 w-4" /></button>
+            </div>
+            <button onClick={onReset}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-3.5 py-2 text-sm font-semibold">
+              <RotateCcw className="h-4 w-4" /> Restablecer valores
+            </button>
+            <div className="mt-6">
+              <h5 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-primary">Comisiones</h5>
+              {field(FEE_FIELDS)}
+            </div>
+          </aside>
+        </>,
+        document.body,
+      )}
     </>
   );
 }

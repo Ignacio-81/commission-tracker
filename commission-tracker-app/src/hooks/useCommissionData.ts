@@ -12,7 +12,6 @@ export interface MarketConfig {
   astropayUsdtToArs: number;
   beloUsdtToArs: number;
   binanceUsdtToArs: number;
-  takenosUsdToArs: number;
   mercuryAchOut: number;
   mercuryWireOut: number;
   grabrfiAchOutPct: number;
@@ -36,7 +35,6 @@ const DEFAULTS: MarketConfig = {
   astropayUsdtToArs: 1475,
   beloUsdtToArs: 1470,
   binanceUsdtToArs: 1500,
-  takenosUsdToArs: 1460,
   mercuryAchOut: 0,
   mercuryWireOut: 15,
   grabrfiAchOutPct: 0.3,

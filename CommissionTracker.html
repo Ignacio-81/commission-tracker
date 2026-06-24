@@ -281,11 +281,10 @@
 <div class="overlay" id="overlay" onclick="toggleSheet(false)"></div>
 <aside class="sheet" id="sheet">
   <div style="display:flex;justify-content:space-between;align-items:center">
-    <div><h3>⚙️ Mercado</h3><p class="muted" style="font-size:13px">Tasas y comisiones editables</p></div>
+    <div><h3>⚙️ Mercado</h3><p class="muted" style="font-size:13px">Comisiones editables</p></div>
     <button class="btn" onclick="toggleSheet(false)">✕</button>
   </div>
   <button class="btn" style="margin-top:14px" onclick="resetConfig()">↺ Restablecer valores</button>
-  <div id="cfgRates" class="grp"></div>
   <div id="cfgFees" class="grp"></div>
 </aside>
 
@@ -303,10 +302,6 @@ const DEFAULTS = {
   beloUsdToUsdtSpread:4,
   payoneerAchIn:1, payoneerAchOutFixed:1.5, payoneerAchOutSmall:4, payoneerSmallThreshold:400
 };
-const RATE_FIELDS=[
-  ['astropayUsdtToArs','AstroPay USDT→ARS'],['beloUsdtToArs','Belo USDT→ARS'],
-  ['astropayUsdToArs','AstroPay USD→ARS']
-];
 const FEE_FIELDS=[
   ['mercuryAchOut','Mercury ACH out (USD)'],['mercuryWireOut','Mercury Wire intl (USD)'],
   ['grabrfiAchOutPct','GrabrFi ACH out %'],['grabrfiAchOutMin','GrabrFi ACH out mín'],['grabrfiAchOutMax','GrabrFi ACH out máx'],
@@ -557,7 +552,6 @@ function renderConfigPanel(){
   const f=(arr)=>arr.map(([k,lbl])=>`
     <div class="cfg-row"><label>${lbl} ${isMan(k)?'<span class="badge man">Manual</span>':''}</label>
     <input type="number" step="any" value="${config[k]}" onchange="setConfigKey('${k}',this.value)"/></div>`).join('');
-  document.getElementById('cfgRates').innerHTML='<h5>Tasas</h5>'+f(RATE_FIELDS);
   document.getElementById('cfgFees').innerHTML='<h5>Comisiones</h5>'+f(FEE_FIELDS);
 }
 /* ---------- Alerts ---------- */
