@@ -119,7 +119,6 @@ src/
     ├── AlertsBanner             ← Alerta + notificación del navegador cuando ROI supera umbral
     ├── ExchangeRateCard         ← Card de tasa USD→ARS por billetera
     ├── HistoryChart             ← Gráfico de historial de tasas (fuente: localStorage)
-    ├── TransferFlowDiagram      ← Diagrama visual del flujo de cada ruta
     ├── RatesTable               ← Tabla comparativa de comisiones
     ├── Header                   ← Cabecera con timestamp de último refresh y botón de refresh
     └── WalletCard               ← Card genérica de billetera

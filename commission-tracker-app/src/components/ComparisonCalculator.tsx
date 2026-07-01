@@ -35,10 +35,11 @@ export default function ComparisonCalculator({ onCalculate }: Props) {
           return (
             <div key={p.id}
               className={`rounded-xl border p-4 ${best ? "border-success bg-success/10" : "border-border/60 bg-card/50"}`}>
-              <h4 className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm font-bold">
+              <h4 className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold">
                 {p.name}
                 {best && <span className="rounded-full bg-success/20 px-2 py-0.5 text-xs text-success">↗ Mejor</span>}
               </h4>
+              <p className="mb-3 mt-0.5 text-[11px] text-muted-foreground">{p.transferMethod}</p>
               {p.steps.map((s, i) => (
                 <div key={i} className="flex justify-between gap-2 py-1 text-[12.5px] text-foreground/70">
                   <span>{s.from}{s.to && s.to !== s.from ? ` → ${s.to}` : ""}</span>

@@ -75,7 +75,7 @@ src/
   lib/format.ts               formato es-AR
   hooks/useCommissionData.ts  estado, persistencia, calculateComparison()
   components/                 Header, ExchangeRateCard, WalletCard,
-                              TransferFlowDiagram, RatesTable, MarketConfigPanel,
+                              RatesTable, MarketConfigPanel,
                               ComparisonCalculator, ArbitrageLoopCalculator, HistoryChart
   pages/Index.tsx             composición
 supabase/functions/get-exchange-rates/index.ts   backend opcional

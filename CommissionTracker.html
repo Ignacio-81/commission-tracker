@@ -78,11 +78,6 @@
   .rate .top{display:flex;justify-content:space-between;align-items:center}
   /* flow */
   .flow{padding:24px}
-  .route-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid hsl(var(--border)/0.4)}
-  .route-row:last-child{border:none}
-  .node{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
-  .chip{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
-  .arrow{color:hsl(var(--muted-foreground));font-size:18px}
   /* calculator */
   .calc-input{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:22px}
   .field{flex:1;min-width:220px}
@@ -92,7 +87,8 @@
   input[type=number]:focus{border-color:hsl(var(--ring))}
   .route-card{padding:18px;border:1px solid hsl(var(--border)/0.6);border-radius:var(--radius);background:hsl(var(--card)/0.5)}
   .route-card.best{border-color:hsl(var(--success));background:hsl(var(--success)/0.08)}
-  .route-card h4{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .route-card h4{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .route-method{font-size:11px;color:hsl(var(--muted-foreground));margin-bottom:12px}
   .step{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0;color:hsl(215 20% 70%)}
   .step .ded{color:hsl(var(--destructive));font-weight:600;white-space:nowrap}
   .route-tot{margin-top:12px;padding-top:12px;border-top:1px solid hsl(var(--border)/0.5)}
@@ -215,12 +211,6 @@
 
   <!-- Rate cards -->
   <section class="grid g3" id="rateCards"></section>
-
-  <!-- Flow -->
-  <section class="glass-card flow">
-    <h3 class="sec">Flujo de Transferencia</h3>
-    <div id="flowRows"></div>
-  </section>
 
   <!-- Calculator -->
   <section class="glass-card flow">
@@ -389,6 +379,7 @@ function calculateComparison(amount){
   const wd=cc*c.grabrfiUsdtWithdrawPct/100+c.grabrfiUsdtWithdrawFixed; let d=cc-wd-c.astropayReceiveFee;
   const r1ARS=d*c.astropayUsdtToArs;
   const r1={id:'astropay',name:'Mercury → GrabrFi → USDT → AstroPay',finalAmountARS:r1ARS,
+    transferMethod:'Mercury → GrabrFi: ACH  ·  GrabrFi → AstroPay: USDT (Tron/BSC)',
     steps:[
       step('Mercury','GrabrFi','ach',mercAch,'fixed',amount,a),
       step('GrabrFi ACH out','GrabrFi','ach',c.grabrfiAchOutPct,'percentage',a,b),
@@ -405,6 +396,7 @@ function calculateComparison(amount){
   const pb=Math.max(p*c.beloAchInPct/100,c.beloAchInMin); p-=pb;
   const r2ARS=p*beloRate;
   const r2={id:'payoneer',name:'Mercury → Payoneer → Belo',finalAmountARS:r2ARS,
+    transferMethod:'Mercury → Payoneer: ACH  ·  Payoneer → Belo: ACH',
     steps:[
       step('Mercury','Payoneer','ach',mercAch,'fixed',amount,amount-mercAch),
       step('Payoneer recepción','Payoneer','ach',c.payoneerAchIn,'percentage',amount-mercAch,amount-mercAch-p1),
@@ -418,6 +410,7 @@ function calculateComparison(amount){
   const g2=Math.max(g*c.beloAchInPct/100,c.beloAchInMin); g-=g2;
   const r3ARS=g*beloRate;
   const r3={id:'grabrfi',name:'Mercury → GrabrFi → Belo',finalAmountARS:r3ARS,
+    transferMethod:'Mercury → GrabrFi: ACH  ·  GrabrFi → Belo: ACH',
     steps:[
       step('Mercury','GrabrFi','ach',mercAch,'fixed',amount,amount-mercAch),
       step('GrabrFi','Belo','ach',c.grabrfiAchOutPct,'percentage',amount-mercAch,amount-mercAch-g1),
@@ -429,6 +422,7 @@ function calculateComparison(amount){
   const spreadFee=s*c.beloUsdToUsdtSpread/100; s-=spreadFee;
   const r4ARS=s*beloRate;
   const r4={id:'santander',name:'Mercury Wire → Santander → Belo',finalAmountARS:r4ARS,
+    transferMethod:'Mercury → Santander: Wire  ·  Santander → Belo: transferencia local',
     steps:[
       step('Mercury','Santander','wire',c.mercuryWireOut,'fixed',amount,amount-c.mercuryWireOut),
       step('Santander recepción Wire','Santander','wire',0,'fixed',amount-c.mercuryWireOut,amount-c.mercuryWireOut),
@@ -465,20 +459,6 @@ function renderRateCards(){
       <div class="sub">1 USD → ARS</div>
     </div>`).join('');
 }
-function flowRow(nodes){
-  return '<div class="route-row">'+nodes.map((n,i)=>
-    (i?'<span class="arrow">→</span>':'')+
-    `<span class="node"><span class="chip" style="background:hsl(var(${n.t}))">${n.c}</span>${n.l}</span>`
-  ).join('')+'</div>';
-}
-function renderFlow(){
-  document.getElementById('flowRows').innerHTML=[
-    flowRow([{c:'$',l:'Mercury',t:'--mercury'},{c:'GF',l:'GrabrFi',t:'--grabrfi'},{c:'₮',l:'USDT (Tron/BSC)',t:'--success'},{c:'AP',l:'AstroPay',t:'--astropay'},{c:'$',l:'ARS',t:'--success'}]),
-    flowRow([{c:'$',l:'Mercury',t:'--mercury'},{c:'P',l:'Payoneer',t:'--payoneer'},{c:'B',l:'Belo',t:'--belo'},{c:'$',l:'ARS',t:'--success'}]),
-    flowRow([{c:'$',l:'Mercury',t:'--mercury'},{c:'GF',l:'GrabrFi',t:'--grabrfi'},{c:'B',l:'Belo',t:'--belo'},{c:'$',l:'ARS',t:'--success'}]),
-    flowRow([{c:'$',l:'Mercury (Wire)',t:'--mercury'},{c:'S',l:'Santander',t:'--santander'},{c:'B',l:'Belo',t:'--belo'},{c:'$',l:'ARS',t:'--success'}])
-  ].join('');
-}
 function stepLine(s){
   let txt;
   if(s.feeType==='percentage'&&s.fee>0) txt=`-${fmtUSD(s.amount*s.fee/100)} (${s.fee}%)`;
@@ -494,6 +474,7 @@ function renderCalc(){
     const p=r[id], best=r.recommendation===id;
     return `<div class="route-card ${best?'best':''}">
       <h4>${p.name} ${best?'<span class="badge up">↗ Mejor</span>':''}</h4>
+      <div class="route-method">${p.transferMethod}</div>
       ${p.steps.map(stepLine).join('')}
       <div class="route-tot">
         <div class="t"><span class="muted">Total:</span><span class="big">${fmtARS(p.finalAmountARS)}</span></div>
@@ -599,7 +580,7 @@ function renderAlert(){
 
 function renderAll(){
   document.getElementById('lastUpd').textContent=lastRefresh?lastRefresh.toLocaleTimeString('es-AR'):'—';
-  renderRateCards();renderAlert();renderFlow();renderCalc();renderWallets();renderTable();renderArb();renderConfigPanel();renderChart();
+  renderRateCards();renderAlert();renderCalc();renderWallets();renderTable();renderArb();renderConfigPanel();renderChart();
 }
 
 /* ---------- History / chart ---------- */

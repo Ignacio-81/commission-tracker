@@ -4,7 +4,6 @@ import { useCommissionData } from "../hooks/useCommissionData";
 import { fmtNum } from "../lib/format";
 import Header from "../components/Header";
 import ExchangeRateCard from "../components/ExchangeRateCard";
-import TransferFlowDiagram from "../components/TransferFlowDiagram";
 import MarketConfigPanel from "../components/MarketConfigPanel";
 import ComparisonCalculator from "../components/ComparisonCalculator";
 import ArbitrageLoopCalculator from "../components/ArbitrageLoopCalculator";
@@ -109,8 +108,6 @@ export default function Index() {
           {belo && <ExchangeRateCard wallet={belo} highlight={isBest(belo.usdToArsRate)} />}
           {santander && <ExchangeRateCard wallet={santander} highlight={isBest(santander.usdToArsRate)} />}
         </section>
-
-        <TransferFlowDiagram />
 
         <ComparisonCalculator onCalculate={calculateComparison} />
 

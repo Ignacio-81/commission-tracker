@@ -22,6 +22,7 @@ export interface TransferStep {
 export interface TransferPath {
   id: string; name: string; steps: TransferStep[];
   totalFees: number; finalAmountARS: number; effectiveRate: number;
+  transferMethod: string;
 }
 
 export interface ComparisonResult {
