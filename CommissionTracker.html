@@ -261,8 +261,8 @@
   </section>
 
   <div class="footer">
-    Tasas FX en vivo vía CriptoYa (Belo USDC/ARS y AstroPay USDT/ARS = bid real; MEP/CCL = AL30 24hs). Las ediciones manuales del panel de Mercado tienen precedencia y se marcan "Manual".<br/>
-    Comisiones verificadas con fuentes oficiales (jun-2026): Mercury, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: AstroPay (recepción/conversión) y GrabrFi USD→USDT — ajustables en el panel.<br/>
+    Tasas FX en vivo vía CriptoYa (Belo USDC/ARS, AstroPay USDT/ARS y Binance P2P USDT/ARS = bid real, ya neto de comisiones del exchange; MEP/CCL = AL30 24hs). Las ediciones manuales del panel de Mercado tienen precedencia y se marcan "Manual".<br/>
+    Comisiones verificadas con fuentes oficiales (ago-2026): Mercury, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: GrabrFi USD→USDT (ajustable en el panel) y el spread local USD→USDT de la ruta Santander. La conversión de AstroPay no se descuenta aparte porque ya viene incluida en el bid de CriptoYa.<br/>
     Herramienta informativa — no constituye asesoramiento financiero. Verificá comisiones antes de operar.
   </div>
 </div>
@@ -283,6 +283,7 @@
 const DEFAULTS = {
   astropayUsdToArs:1474, astropayUsdtToArs:1475,
   beloUsdtToArs:1470,
+  binanceUsdtToArs:1500,
   mercuryAchOut:0, mercuryWireOut:15,
   grabrfiAchOutPct:0.3, grabrfiAchOutMin:1, grabrfiAchOutMax:5,
   grabrfiUsdToUsdtPct:0.8,
@@ -318,7 +319,7 @@ function setConfigKey(k,v){
 function resetConfig(){config={...DEFAULTS};manualKeys=[];saveConfig();refreshData();}
 
 /* ---------- Live rates ---------- */
-let rates={belo:null,astropay:null,mep:null,ccl:null,payoneer:null,grabrfi:null,santander:null};
+let rates={belo:null,astropay:null,binance:null,mep:null,ccl:null,payoneer:null,grabrfi:null,santander:null};
 let lastRefresh=null, isLoading=false;
 
 async function fetchJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(u);return r.json();}
@@ -326,22 +327,25 @@ async function refreshData(){
   if(isLoading)return; isLoading=true; document.getElementById('refIcon').className='spin';
   document.getElementById('errBox').innerHTML='';
   try{
-    const [dolar,astro,belo]=await Promise.all([
+    const [dolar,astro,belo,binance]=await Promise.all([
       fetchJSON('https://criptoya.com/api/dolar'),
       fetchJSON('https://criptoya.com/api/astropay/usdt/ars/1'),
-      fetchJSON('https://criptoya.com/api/belo/usdc/ars/1')
+      fetchJSON('https://criptoya.com/api/belo/usdc/ars/1'),
+      fetchJSON('https://criptoya.com/api/binancep2p/usdt/ars/1').catch(()=>null)
     ]);
     const mep=dolar?.mep?.al30?.['24hs']?.price;
     const ccl=dolar?.ccl?.al30?.['24hs']?.price;
     rates.mep=mep; rates.ccl=ccl;
     rates.astropay=astro.totalBid||astro.bid;
     rates.belo=belo.totalBid||belo.bid;
+    rates.binance=binance?(binance.totalBid||binance.bid):null;
     rates.payoneer=ccl?ccl*0.99:null;
     rates.grabrfi=mep; rates.santander=mep;
     // sync non-manual config rate keys from API
     if(!manualKeys.includes('astropayUsdtToArs')) config.astropayUsdtToArs=rates.astropay;
     if(!manualKeys.includes('astropayUsdToArs'))  config.astropayUsdToArs=rates.astropay;
     if(!manualKeys.includes('beloUsdtToArs'))     config.beloUsdtToArs=rates.belo;
+    if(!manualKeys.includes('binanceUsdtToArs') && rates.binance) config.binanceUsdtToArs=rates.binance;
     saveConfig();
     lastRefresh=new Date();
     snapshot();
@@ -387,6 +391,18 @@ function calculateComparison(amount){
       step('GrabrFi USDT','Red Cripto','conversion',wd,'fixed',cc,d),
       step('AstroPay (USDT)','AstroPay (ARS)','conversion',c.astropayReceiveFee,'fixed',d,r1ARS)
     ]};
+  // R5 Binance P2P (misma adquisición de USDT que R1; venta P2P 0% al mejor precio)
+  const binUSDT=cc-wd;
+  const r5ARS=binUSDT*c.binanceUsdtToArs;
+  const r5={id:'binance',name:'Mercury → GrabrFi → USDT → Binance P2P',finalAmountARS:r5ARS,
+    transferMethod:'Mercury → GrabrFi: ACH  ·  GrabrFi → Binance P2P: USDT (Tron/BSC)',
+    steps:[
+      step('Mercury','GrabrFi','ach',mercAch,'fixed',amount,a),
+      step('GrabrFi ACH out','GrabrFi','ach',c.grabrfiAchOutPct,'percentage',a,b),
+      step('GrabrFi USD','GrabrFi USDT','conversion',c.grabrfiUsdToUsdtPct,'percentage',b,cc),
+      step('GrabrFi USDT','Binance (red)','conversion',wd,'fixed',cc,binUSDT),
+      step('Binance P2P (USDT→ARS)','ARS','conversion',0,'fixed',binUSDT,r5ARS)
+    ]};
   // R2 Payoneer → Belo
   let p=amount-mercAch;
   const p1=p*c.payoneerAchIn/100; p-=p1;
@@ -430,8 +446,8 @@ function calculateComparison(amount){
       step('Spread local USD→USDT','Belo','conversion',c.beloUsdToUsdtSpread,'percentage',amount-c.mercuryWireOut,s),
       step('Belo (USD)','Belo (ARS)','conversion',0,'fixed',s,r4ARS)
     ]};
-  const paths={astropay:r1,payoneer:r2,grabrfi:r3,santander:r4};
-  const arr=[r1,r2,r3,r4];
+  const paths={astropay:r1,payoneer:r2,grabrfi:r3,santander:r4,binance:r5};
+  const arr=[r1,r2,r3,r4,r5];
   const best=arr.reduce((m,x)=>x.finalAmountARS>m.finalAmountARS?x:m);
   const worst=arr.reduce((m,x)=>x.finalAmountARS<m.finalAmountARS?x:m);
   const savings=best.finalAmountARS-worst.finalAmountARS;
@@ -449,6 +465,7 @@ function renderRateCards(){
   const data=[
     {name:'Astropay',rate:config.astropayUsdtToArs,man:isMan('astropayUsdtToArs'),tone:'--astropay'},
     {name:'Belo',rate:config.beloUsdtToArs,man:isMan('beloUsdtToArs'),tone:'--belo'},
+    {name:'Binance P2P',rate:config.binanceUsdtToArs,man:isMan('binanceUsdtToArs'),tone:'--grabrfi'},
     {name:'Santander (MEP)',rate:rates.santander,man:false,tone:'--santander'}
   ];
   document.getElementById('rateCards').innerHTML=data.map(d=>`
@@ -469,7 +486,7 @@ function stepLine(s){
 function renderCalc(){
   const amt=parseFloat(document.getElementById('calcAmount').value)||0;
   const r=calculateComparison(amt);
-  const order=['astropay','payoneer','grabrfi','santander'];
+  const order=['astropay','payoneer','grabrfi','santander','binance'];
   document.getElementById('calcCards').innerHTML=order.map(id=>{
     const p=r[id], best=r.recommendation===id;
     return `<div class="route-card ${best?'best':''}">

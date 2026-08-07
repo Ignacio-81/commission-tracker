@@ -35,13 +35,24 @@ export default function RatesTable({ commissions }: { commissions: WalletCommiss
                 </td>
                 <Td>{w.achIncoming === 0 ? <Free /> : `${w.achIncoming}${w.achIncomingMin != null ? "%" : " USD"}`}</Td>
                 <Td>{w.achOutgoing === 0 ? <Free /> : `${w.achOutgoing}${w.achOutgoingMin != null ? "%" : " USD"}`}</Td>
-                <Td>{w.conversionFee === 0 ? <Free /> : `${w.conversionFee}%`}</Td>
+                <Td>
+                  {w.conversionFee === 0 ? <Free /> : (
+                    <span title="Ya incluida en la tasa de CriptoYa (totalBid es neto de comisiones); no se descuenta aparte en el cálculo de rutas.">
+                      {w.conversionFee}% <span className="text-muted-foreground">*</span>
+                    </span>
+                  )}
+                </Td>
                 <Td>{w.monthlyFee === 0 ? <Free /> : cell(w.monthlyFee)}</Td>
                 <Td>{w.usdToArsRate ? fmtNum(w.usdToArsRate) : "—"}</Td>
               </tr>
             ))}
           </tbody>
         </table>
+        <p className="mt-3 text-xs text-muted-foreground">
+          * La comisión de conversión ya está incluida en la tasa que devuelve CriptoYa
+          (<code>totalBid</code> es neto de comisiones del exchange), por eso no se descuenta
+          otra vez en el cálculo de rutas.
+        </p>
       </div>
     </div>
   );

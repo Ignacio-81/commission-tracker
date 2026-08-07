@@ -160,6 +160,10 @@ export function useCommissionData() {
     const beloRate = c.beloUsdtToArs;
 
     // R1 AstroPay (Crypto)
+    // NOTA: la comisión de conversión de AstroPay (~2.5%) NO se descuenta acá a propósito.
+    // `astropayUsdtToArs` viene de CriptoYa `totalBid`, que ya es neto de las comisiones del
+    // exchange. Restarla de nuevo sería contarla dos veces. El 2.5% que muestra RatesTable es
+    // informativo. Mismo criterio para Binance P2P en R5.
     let a = amountUSD - c.mercuryAchOut;
     const ga = clamp((a * c.grabrfiAchOutPct) / 100, c.grabrfiAchOutMin, c.grabrfiAchOutMax);
     const b = a - ga;
@@ -237,6 +241,11 @@ export function useCommissionData() {
     };
 
     // R4 Santander Wire → Belo  (¡sin paso USDT→ARS!)
+    // NOTA: `beloUsdToUsdtSpread` (4%) es un ESTIMADO sin fuente oficial y es la comisión más
+    // grande del modelo. Sensibilidad medida (ago-2026): incluso con spread 0% esta ruta pierde
+    // contra R3 por debajo de ~US$5.000 (el wire de $15 solo ya la descarta), y arriba de ese
+    // monto necesitaría un spread ≤0,25% para ganar. O sea: el valor exacto afecta el número
+    // mostrado, no la recomendación. Ajustable en el panel ⚙️ Mercado.
     let s = amountUSD - c.mercuryWireOut;
     const spreadFee = (s * c.beloUsdToUsdtSpread) / 100;
     s -= spreadFee;

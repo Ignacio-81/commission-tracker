@@ -93,11 +93,28 @@ Refresco automático: cada **5 minutos** + al volver a la pestaña (visibilitych
 | Payoneer ACH in | 1% | ✅ Oficial |
 | Payoneer retiro USD (≥$400) | $1.50 fijo | ✅ Oficial (desde mar-2025) |
 | Payoneer retiro USD (<$400) | $4.00 fijo | ✅ Oficial (desde mar-2025) |
-| AstroPay recepción | $0 | ⚠️ Estimado |
-| AstroPay conversión | 2.5% | ⚠️ Estimado (sin tarifario público) |
-| AstroPay ACH out | $3.50 | ⚠️ Estimado |
+| AstroPay recepción | $0 | ⚠️ Estimado — ajustable en panel |
+| AstroPay conversión | 2.5% | ℹ️ Solo informativo — **no se usa en el cálculo** (ver abajo) |
+| AstroPay ACH out | $3.50 | ℹ️ Solo informativo — **no se usa en el cálculo** |
+| Spread local USD→USDT (ruta R4) | 4% | ⚠️ Estimado sin fuente — ajustable en panel |
 
-Los valores **estimados** son ajustables en el panel ⚙️ Mercado de la UI.
+**Qué es editable y qué no.** Son ajustables en el panel ⚙️ Mercado únicamente los campos
+listados en `FEE_FIELDS` (`MarketConfigPanel.tsx`). `astropayConversion` (2.5%) y
+`astropayAchOut` ($3.50) **no** están en `MarketConfig`: son literales dentro de
+`buildCommissions()` que solo alimentan la tabla `RatesTable`. No los edites esperando que
+cambien un resultado — no participan de `calculateComparison()`.
+
+**Por qué el 2.5% de AstroPay no se descuenta.** `astropayUsdtToArs` sale de CriptoYa
+`totalBid`, que ya viene **neto de las comisiones del exchange**. Restar el 2.5% otra vez
+sería contarlo dos veces. Mismo criterio para Binance P2P en R5. La tabla lo muestra con un
+asterisco y nota al pie.
+
+**Sobre el spread de 4% de R4.** Es el fee más grande del modelo y no tiene fuente oficial.
+Sensibilidad medida (ago-2026): incluso con spread **0%** R4 pierde contra R3 por debajo de
+~US$5.000 — el wire de $15 solo ya la descarta — y arriba de ese monto necesitaría un spread
+≤0,25% para ganar. Conclusión: el valor exacto mueve el número mostrado, **no la
+recomendación**.
+
 El panel marca como "Manual" cualquier campo que el usuario haya editado manualmente,
 y esos valores tienen precedencia sobre los que traen las APIs.
 
