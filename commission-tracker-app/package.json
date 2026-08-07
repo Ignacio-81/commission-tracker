@@ -7,7 +7,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify": "node ../scripts/verify-rates.mjs",
+    "verify:offline": "node ../scripts/verify-rates.mjs --offline",
+    "verify:strict": "node ../scripts/verify-rates.mjs --strict",
+    "check": "npm run verify && tsc --noEmit"
   },
   "dependencies": {
     "lucide-react": "^0.400.0",
