@@ -289,7 +289,9 @@ const DEFAULTS = {
   grabrfiUsdToUsdtPct:0.8,
   grabrfiUsdtWithdrawPct:1.1, grabrfiUsdtWithdrawFixed:1,
   astropayReceiveFee:0,
-  beloAchInPct:0.3, beloAchInMin:0.5,
+  // beloAchInPct MEDIDO 5-ago-2026: entraron 1300 USDC, descontó 6,50 → 0,500%
+  // (el tarifario público dice 0,3%; el valor medido tiene precedencia)
+  beloAchInPct:0.5, beloAchInMin:0.5,
   beloUsdToUsdtSpread:4,
   payoneerAchIn:1, payoneerAchOutFixed:1.5, payoneerAchOutSmall:4, payoneerSmallThreshold:400
 };

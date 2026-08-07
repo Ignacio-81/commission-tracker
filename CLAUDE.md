@@ -88,7 +88,7 @@ Refresco automático: cada **5 minutos** + al volver a la pestaña (visibilitych
 | GrabrFi USDT withdraw | 1.1% + $1 fijo | ✅ Oficial |
 | GrabrFi Wire in | $5 (US doméstico) | ✅ Oficial |
 | GrabrFi USD→USDT | 0.8% | ⚠️ Estimado (se muestra in-app antes de confirmar) |
-| Belo ACH in | 0.3% (mín $0.50) | ✅ Oficial |
+| Belo ACH in | **0.5%** (mín $0.50) | 🔬 **Medido** 5-ago-2026 — el tarifario público dice 0.3%, la operación real descontó 6,50 sobre 1300 USDC (0,500%). El valor medido tiene precedencia. |
 | Belo Wire in | $20 | ✅ Oficial |
 | Payoneer ACH in | 1% | ✅ Oficial |
 | Payoneer retiro USD (≥$400) | $1.50 fijo | ✅ Oficial (desde mar-2025) |

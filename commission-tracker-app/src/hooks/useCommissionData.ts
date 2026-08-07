@@ -44,7 +44,9 @@ const DEFAULTS: MarketConfig = {
   grabrfiUsdtWithdrawPct: 1.1,
   grabrfiUsdtWithdrawFixed: 1,
   astropayReceiveFee: 0,
-  beloAchInPct: 0.3,
+  // MEDIDO 5-ago-2026 sobre una operación real: entraron 1300 USDC, descontó 6,50 → 0,500%.
+  // El tarifario público de Belo dice 0,3%; el valor medido tiene precedencia.
+  beloAchInPct: 0.5,
   beloAchInMin: 0.5,
   beloUsdToUsdtSpread: 4,
   payoneerAchIn: 1,

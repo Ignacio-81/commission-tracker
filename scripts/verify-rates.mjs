@@ -6,13 +6,16 @@
  *   node scripts/verify-rates.mjs           # tasas en vivo desde CriptoYa
  *   node scripts/verify-rates.mjs --offline # usa las tasas de referencia (sin red)
  *   node scripts/verify-rates.mjs --json    # salida JSON para diffear entre corridas
+ *   node scripts/verify-rates.mjs --strict  # los avisos de plausibilidad también fallan
  *
  * Qué hace:
  *   1. Verifica que cada endpoint de CriptoYa responda y que el campo que parsea la app exista.
  *   2. Verifica que las comisiones hardcodeadas en useCommissionData.ts y CommissionTracker.html
  *      coincidan con los valores esperados de esta tabla (fuente: auditoría oficial).
  *   3. Corre las 5 rutas en varios montos y chequea invariantes (sin NaN, sin negativos, etc).
- *   4. Sale con código 1 si hay algún diff, para que una tarea programada lo detecte.
+ *   4. Chequea que las tasas sean PLAUSIBLES ENTRE SÍ (ver checkPlausibility).
+ *   5. Sale con código 1 si hay algún diff, para que una tarea programada lo detecte.
+ *      Con --strict, los avisos de plausibilidad también hacen fallar la corrida.
  *
  * Cuando cambies una comisión a propósito, actualizá EXPECTED_FEES acá también.
  */
@@ -20,6 +23,11 @@
 const args = process.argv.slice(2);
 const OFFLINE = args.includes("--offline");
 const AS_JSON = args.includes("--json");
+const STRICT = args.includes("--strict");
+
+// Umbrales de plausibilidad. Ver checkPlausibility().
+const MEP_OUTLIER_PCT = 2.5;   // desvío máx. del MEP vs el cluster de dólar cripto/CCL
+const ROI_NOISE_PCT = 1.5;     // por debajo de este margen, el ROI del puré es ruido
 
 /* ------------------------------------------------------------------ */
 /* 1. Comisiones esperadas — la fuente de verdad de este chequeo        */
@@ -35,7 +43,7 @@ const EXPECTED_FEES = {
   grabrfiUsdtWithdrawPct: 1.1,
   grabrfiUsdtWithdrawFixed: 1,
   astropayReceiveFee: 0,
-  beloAchInPct: 0.3,
+  beloAchInPct: 0.5, // medido 5-ago-2026 (6,50 sobre 1300); el tarifario público dice 0,3%
   beloAchInMin: 0.5,
   beloUsdToUsdtSpread: 4,
   payoneerAchIn: 1,
@@ -44,7 +52,10 @@ const EXPECTED_FEES = {
   payoneerSmallThreshold: 400,
 };
 
-// Estado de verificación de cada fee. `official` = contrastado contra tarifario público.
+// Estado de verificación de cada fee.
+//   official  = contrastado contra tarifario público
+//   measured  = medido sobre una operación real (tiene precedencia sobre lo publicado)
+//   estimated = sin fuente, valor supuesto
 const FEE_STATUS = {
   mercuryAchOut: "official",
   mercuryWireOut: "official",
@@ -55,7 +66,7 @@ const FEE_STATUS = {
   grabrfiUsdtWithdrawPct: "official",
   grabrfiUsdtWithdrawFixed: "official",
   astropayReceiveFee: "estimated",
-  beloAchInPct: "official",
+  beloAchInPct: "measured",
   beloAchInMin: "official",
   beloUsdToUsdtSpread: "estimated",
   payoneerAchIn: "official",
@@ -64,13 +75,15 @@ const FEE_STATUS = {
   payoneerSmallThreshold: "official",
 };
 
-// Tasas de referencia para --offline (auditoría jun-2026).
+// Tasas de referencia para --offline. Snapshot de la corrida en vivo del 7-ago-2026.
+// Ojo: este set tiene el MEP desalineado del resto (ver checkPlausibility), así que
+// `--offline` dispara los avisos de plausibilidad a propósito. Es útil como caso de prueba.
 const REFERENCE_RATES = {
-  belo: 1511.14,
-  astropay: 1476.67,
-  binance: 1520,
-  mep: 1478.02,
-  ccl: 1495,
+  belo: 1565.59,
+  astropay: 1550.17,
+  binance: 1565.52,
+  mep: 1525.04,
+  ccl: 1584.27,
 };
 
 const ENDPOINTS = [
@@ -167,11 +180,20 @@ function checkSource(relPath, label, issues) {
 /* 4. Main                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Devuelve { rates, sources } donde sources[k] es "live" o "fallback".
+ *
+ * Distinguirlos importa: si un endpoint falla, el script cae a REFERENCE_RATES, que es un
+ * snapshot con valores plausibles. Sin marcarlo, la salida es indistinguible de una corrida
+ * real y alguien podría operar sobre tasas viejas. Fuera de --offline, un fetch fallido es
+ * un ERROR: el chequeo no pudo hacer su trabajo.
+ */
 async function fetchRates(issues) {
   const rates = { ...REFERENCE_RATES };
+  const sources = Object.fromEntries(Object.keys(rates).map((k) => [k, "fallback"]));
   if (OFFLINE) {
     issues.push({ kind: "net", severity: "warn", msg: "modo --offline: usando tasas de referencia, no se verificaron los endpoints" });
-    return rates;
+    return { rates, sources };
   }
   for (const ep of ENDPOINTS) {
     try {
@@ -185,15 +207,25 @@ async function fetchRates(issues) {
       }
       if (ep.key === "dolar") {
         rates.mep = val;
-        rates.ccl = json?.ccl?.al30?.["24hs"]?.price ?? rates.ccl;
+        sources.mep = "live";
+        const cclVal = json?.ccl?.al30?.["24hs"]?.price;
+        if (typeof cclVal === "number" && isFinite(cclVal) && cclVal > 0) {
+          rates.ccl = cclVal;
+          sources.ccl = "live";
+        }
       } else {
         rates[ep.key] = val;
+        sources[ep.key] = "live";
       }
     } catch (e) {
-      issues.push({ kind: "net", severity: "warn", msg: `${ep.key}: ${e.message} — se usa la tasa de referencia` });
+      issues.push({
+        kind: "net",
+        severity: "error",
+        msg: `${ep.key}: ${e.message} — NO se pudo verificar en vivo, se muestra la tasa de referencia (snapshot, no actual)`,
+      });
     }
   }
-  return rates;
+  return { rates, sources };
 }
 
 function checkRoutes(rates, issues) {
@@ -219,20 +251,97 @@ function checkRoutes(rates, issues) {
   return table;
 }
 
+/**
+ * Chequeo de plausibilidad entre tasas.
+ *
+ * Motivación (ago-2026): una corrida en vivo dio MEP 1525,04 mientras Belo, Binance y CCL
+ * estaban en 1565–1584. El dólar cripto sigue de cerca al CCL porque es el mismo arbitraje,
+ * así que un MEP 2,7% por debajo de todo el resto es sospechoso. Y como el ROI del puré se
+ * calcula `mejor_ruta / MEP`, un MEP subvaluado infla el ROI: con el breakeven a solo 2% del
+ * valor observado, la diferencia entre "oportunidad" y "artefacto" es ese único número.
+ *
+ * El chequeo de esquema y comisiones no ve nada de esto: los valores son numéricos, positivos
+ * y con el campo correcto. Por eso hace falta un chequeo aparte de coherencia entre tasas.
+ */
+function checkPlausibility(rates, table, issues) {
+  const median = (xs) => {
+    const s = [...xs].filter((x) => typeof x === "number" && isFinite(x) && x > 0).sort((a, b) => a - b);
+    if (!s.length) return null;
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+
+  // El "mercado" de referencia: dólar cripto + CCL. Excluye al MEP a propósito.
+  const ref = median([rates.belo, rates.binance, rates.ccl]);
+  if (!ref || !rates.mep) {
+    issues.push({ kind: "plausibility", severity: "warn", msg: "faltan tasas para chequear plausibilidad" });
+    return;
+  }
+
+  const dev = (rates.mep / ref - 1) * 100;
+  if (Math.abs(dev) > MEP_OUTLIER_PCT) {
+    issues.push({
+      kind: "plausibility",
+      severity: "warn",
+      msg: `MEP ${rates.mep} está ${dev.toFixed(2)}% respecto del cluster cripto/CCL (ref ${ref.toFixed(2)}). ` +
+           `El ROI del puré se calcula dividiendo por el MEP, así que un MEP desalineado lo distorsiona. ` +
+           `Cruzá el MEP contra otra fuente antes de operar.`,
+    });
+  }
+
+  if (rates.ccl && rates.mep) {
+    const gap = (rates.ccl / rates.mep - 1) * 100;
+    if (gap > 3) {
+      issues.push({ kind: "plausibility", severity: "warn", msg: `brecha CCL–MEP de ${gap.toFixed(2)}%, más ancha de lo habitual` });
+    }
+  }
+
+  // ¿Cuánto margen hay antes de que el puré dé cero?
+  for (const row of table) {
+    if (row.amount !== 1000) continue;
+    const bestPerUsd = row.perUsd[row.best];
+    const breakevenMep = bestPerUsd;
+    const margin = (breakevenMep / rates.mep - 1) * 100;
+    if (row.arbitrageRoiPct > 0 && margin < ROI_NOISE_PCT) {
+      issues.push({
+        kind: "plausibility",
+        severity: "warn",
+        msg: `el ROI del puré (${row.arbitrageRoiPct}%) está a solo ${margin.toFixed(2)}% del breakeven ` +
+             `(MEP ${breakevenMep.toFixed(2)}); dentro del ruido de las tasas`,
+      });
+    }
+  }
+}
+
 const issues = [];
-const rates = await fetchRates(issues);
+const { rates, sources } = await fetchRates(issues);
 checkSource("CommissionTracker.html", "HTML", issues);
 checkSource("commission-tracker-app/src/hooks/useCommissionData.ts", "React", issues);
 const table = checkRoutes(rates, issues);
+checkPlausibility(rates, table, issues);
 
 const errors = issues.filter((i) => i.severity === "error");
 const warns = issues.filter((i) => i.severity === "warn");
+const plausibility = warns.filter((i) => i.kind === "plausibility");
+
+const liveCount = Object.values(sources).filter((s) => s === "live").length;
+const totalCount = Object.keys(sources).length;
 
 if (AS_JSON) {
-  console.log(JSON.stringify({ ts: new Date().toISOString(), rates, table, issues }, null, 2));
+  console.log(JSON.stringify({ ts: new Date().toISOString(), rates, sources, table, issues }, null, 2));
 } else {
-  console.log(`\n  Tasas  ${OFFLINE ? "(referencia, offline)" : "(en vivo)"}`);
-  for (const [k, v] of Object.entries(rates)) console.log(`    ${k.padEnd(10)} ${v}`);
+  const header = OFFLINE
+    ? "(referencia, offline)"
+    : liveCount === totalCount
+      ? "(en vivo)"
+      : liveCount === 0
+        ? "⚠ NINGUNA EN VIVO — todas son del snapshot de referencia, NO son tasas actuales"
+        : `⚠ PARCIAL — solo ${liveCount}/${totalCount} en vivo, el resto es snapshot`;
+  console.log(`\n  Tasas  ${header}`);
+  for (const [k, v] of Object.entries(rates)) {
+    const mark = OFFLINE ? "" : sources[k] === "live" ? "  · en vivo" : "  · SNAPSHOT (no actual)";
+    console.log(`    ${k.padEnd(10)} ${String(v).padEnd(10)}${mark}`);
+  }
 
   console.log(`\n  Rutas (ARS por USD)`);
   console.log(`    ${"monto".padEnd(8)} ${["R1", "R2", "R3", "R4", "R5"].map((s) => s.padStart(8)).join("")}   mejor   ROI puré`);
@@ -241,9 +350,14 @@ if (AS_JSON) {
     console.log(`    ${("$" + row.amount).padEnd(8)} ${cells}   ${row.best.padEnd(6)}  ${row.arbitrageRoiPct}%`);
   }
 
-  if (warns.length) {
+  if (plausibility.length) {
+    console.log(`\n  ⚠ Plausibilidad de tasas`);
+    for (const w of plausibility) console.log(`    ! ${w.msg}`);
+  }
+  const otherWarns = warns.filter((w) => w.kind !== "plausibility");
+  if (otherWarns.length) {
     console.log(`\n  Avisos`);
-    for (const w of warns) console.log(`    ~ ${w.msg}`);
+    for (const w of otherWarns) console.log(`    ~ ${w.msg}`);
   }
   if (errors.length) {
     console.log(`\n  Diffs (${errors.length})`);
@@ -254,4 +368,4 @@ if (AS_JSON) {
   console.log("");
 }
 
-process.exit(errors.length ? 1 : 0);
+process.exit(errors.length || (STRICT && plausibility.length) ? 1 : 0);
