@@ -9,7 +9,7 @@ interface Props {
 }
 
 export default function ArbitrageLoopCalculator({ onCalculate, santander }: Props) {
-  const [amount, setAmount] = useState(1000);
+  const [amount, setAmount] = useState(3450);
 
   const { best, finalUSD, profit, roi } = useMemo(() => {
     const res = onCalculate(amount || 0);

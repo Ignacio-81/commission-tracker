@@ -14,7 +14,7 @@ function deduction(s: TransferStep) {
 }
 
 export default function ComparisonCalculator({ onCalculate }: Props) {
-  const [amount, setAmount] = useState(1000);
+  const [amount, setAmount] = useState(3450);
   const result = useMemo(() => onCalculate(amount || 0), [amount, onCalculate]);
   const paths: TransferPath[] = [result.astropayPath, result.payoneerPath, result.grabrfiPath, result.santanderPath, result.binancePath];
 
