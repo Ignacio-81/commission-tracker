@@ -134,7 +134,7 @@ export function useCommissionData() {
   const snapshot = useCallback((cfg: MarketConfig, getResult: (a: number) => ComparisonResult) => {
     try {
       const h: HistoryPoint[] = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-      const r = getResult(1000);
+      const r = getResult(3450);
       const best = [r.astropayPath, r.payoneerPath, r.grabrfiPath, r.santanderPath, r.binancePath]
         .reduce((m, x) => (x.finalAmountARS > m.finalAmountARS ? x : m));
       const lr = ratesRef.current;
