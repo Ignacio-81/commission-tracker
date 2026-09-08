@@ -22,7 +22,7 @@ export default function IndexV2() {
     marketConfig, setMarketConfig, resetMarketConfig, manualKeys,
   } = useCommissionData();
 
-  const [amount, setAmount] = useState<number>(1000);
+  const [amount, setAmount] = useState<number>(3450);
 
   const routes = useMemo(
     () => (amount > 0 ? optimizeRoutes(amount, marketConfig) : []),

@@ -7,3 +7,6 @@ dist-ssr/
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+
+# Config local del agente (no debe versionarse; *.local no la matchea)
+.claude/settings.local.json
