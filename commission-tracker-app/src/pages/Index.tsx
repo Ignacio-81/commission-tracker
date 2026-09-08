@@ -10,7 +10,7 @@ import ArbitrageLoopCalculator from "../components/ArbitrageLoopCalculator";
 import HistoryChart from "../components/HistoryChart";
 import AlertsBanner from "../components/AlertsBanner";
 
-const REF_AMOUNT = 1000;
+const REF_AMOUNT = 3450;
 
 export default function Index() {
   const {
