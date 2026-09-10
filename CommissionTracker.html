@@ -403,7 +403,7 @@ function calculateComparison(amount){
       step('Mercury','GrabrFi','ach',mercAch,'fixed',amount,a),
       step('GrabrFi ACH out','GrabrFi','ach',c.grabrfiAchOutPct,'percentage',a,b),
       step('GrabrFi USD','GrabrFi USDT','conversion',c.grabrfiUsdToUsdtPct,'percentage',b,cc),
-      step('GrabrFi USDT','Red Cripto','conversion',wd,'fixed',cc,d),
+      step('GrabrFi retiro USDT (fee plataforma)','Red Cripto','conversion',wd,'fixed',cc,d),
       step('AstroPay (USDT)','AstroPay (ARS)','conversion',c.astropayReceiveFee,'fixed',d,r1ARS)
     ]};
   // R5 Binance P2P (misma adquisición de USDT que R1; venta P2P 0% al mejor precio)
@@ -415,7 +415,7 @@ function calculateComparison(amount){
       step('Mercury','GrabrFi','ach',mercAch,'fixed',amount,a),
       step('GrabrFi ACH out','GrabrFi','ach',c.grabrfiAchOutPct,'percentage',a,b),
       step('GrabrFi USD','GrabrFi USDT','conversion',c.grabrfiUsdToUsdtPct,'percentage',b,cc),
-      step('GrabrFi USDT','Binance (red)','conversion',wd,'fixed',cc,binUSDT),
+      step('GrabrFi retiro USDT (fee plataforma)','Binance (red)','conversion',wd,'fixed',cc,binUSDT),
       step('Binance P2P (USDT→ARS)','ARS','conversion',0,'fixed',binUSDT,r5ARS)
     ]};
   // R2 Payoneer → Belo
