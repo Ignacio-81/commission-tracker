@@ -4,6 +4,7 @@ import { fmtNum } from "../lib/format";
 const TONE: Record<string, string> = {
   mercury: "var(--mercury)", astropay: "var(--astropay)", belo: "var(--belo)",
   payoneer: "var(--payoneer)", grabrfi: "var(--grabrfi)", santander: "var(--santander)",
+  takenos: "var(--takenos)",
 };
 
 export default function ExchangeRateCard({ wallet, highlight = false }: { wallet: WalletCommission; highlight?: boolean }) {

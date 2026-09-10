@@ -40,11 +40,12 @@ Cuando se haga un cambio de lógica (comisiones, rutas, fórmulas), **aplicarlo 
 | `belo` | Destino principal — recibe USD por ACH desde GrabrFi o Payoneer, convierte a ARS vía MEP |
 | `payoneer` | Intermediario alternativo — recibe de Mercury y reenvía a Belo |
 | `santander` | Rol especial — recibe wire de Mercury y reenvía a Belo; también es el tipo de cambio MEP de referencia para el cálculo del puré |
+| `takenos` | Destino directo — recibe ACH de Mercury vía cuenta FBO y retira directo a CBU/CVU en ARS, sin intermediarios |
 | Binance P2P | Solo para la ruta R5 (no tiene slug propio, usa la tasa `binanceUsdtToArs`) |
 
 ---
 
-## Las 5 rutas de transferencia
+## Las 6 rutas de transferencia
 
 ```
 R1  Mercury --ACH--> GrabrFi --USDT--> AstroPay --ARS-->  [tasa AstroPay]
@@ -52,11 +53,19 @@ R2  Mercury --ACH--> Payoneer --ACH--> Belo --ARS-->       [tasa Belo/MEP]
 R3  Mercury --ACH--> GrabrFi  --ACH--> Belo --ARS-->       [tasa Belo/MEP]
 R4  Mercury --Wire-> Santander ------> Belo --ARS-->        [tasa Belo/MEP] ← el wire cuesta $15
 R5  Mercury --ACH--> GrabrFi --USDT--> Binance P2P --ARS-- [tasa Binance P2P]
+R6  Mercury --ACH--> Takenos ------------------> ARS -->   [tasa Takenos, ≈ MEP] ← 0% en todos los pasos
 ```
 
 **Importante:** R2, R3 y R4 liquidan todas a la tasa Belo (USDC/ARS bid de CriptoYa).
-Solo R1 liquida a tasa AstroPay y R5 a Binance P2P. En la práctica, las únicas tasas
-que mueven el resultado son Belo y AstroPay.
+R1 liquida a tasa AstroPay, R5 a Binance P2P y R6 a la tasa Takenos (estimada = MEP,
+ver abajo). En la práctica, las únicas tasas que mueven el resultado son Belo, AstroPay
+y Takenos.
+
+**Sobre R6 (Takenos).** Es la ruta más simple del modelo: sale de Mercury por ACH
+(comisión `mercuryAchOut`, hoy $0) y Takenos no cobra nada ni en la recepción ACH ni en
+el retiro a CBU/CVU (0% documentado por el proveedor). No hay comisiones editables
+específicas de Takenos en el panel ⚙️ Mercado porque no hay nada que ajustar: los tres
+pasos están hardcodeados en 0 en `calculateComparison()`.
 
 ---
 
@@ -72,7 +81,7 @@ Fuente: `https://criptoya.com` — CORS abierto, se llama directo desde el naveg
 | Dólar MEP (AL30 24hs) | `/api/dolar` | `mep.al30["24hs"].price` |
 | Dólar CCL (AL30 24hs) | `/api/dolar` | `ccl.al30["24hs"].price` |
 | Payoneer (estimado) | — | `CCL × 0.99` |
-| GrabrFi / Santander | — | `= MEP` |
+| GrabrFi / Santander / Takenos | — | `= MEP` (Takenos no publica una API/tasa pública consultable por CORS) |
 
 Refresco automático: cada **5 minutos** + al volver a la pestaña (visibilitychange).
 
@@ -97,6 +106,8 @@ Refresco automático: cada **5 minutos** + al volver a la pestaña (visibilitych
 | AstroPay conversión | 2.5% | ℹ️ Solo informativo — **no se usa en el cálculo** (ver abajo) |
 | AstroPay ACH out | $3.50 | ℹ️ Solo informativo — **no se usa en el cálculo** |
 | Spread local USD→USDT (ruta R4) | 4% | ⚠️ Estimado sin fuente — ajustable en panel |
+| Takenos ACH in | 0% | ✅ Oficial (ficha del proveedor) |
+| Takenos retiro CBU/CVU | 0% | ✅ Oficial (ficha del proveedor) |
 
 **Qué es editable y qué no.** Son ajustables en el panel ⚙️ Mercado únicamente los campos
 listados en `FEE_FIELDS` (`MarketConfigPanel.tsx`). `astropayConversion` (2.5%) y
@@ -130,7 +141,7 @@ src/
 ├── types/commission.ts          ← WalletCommission | TransferPath | TransferStep | ComparisonResult
 ├── pages/Index.tsx              ← Layout principal, orquesta todos los componentes
 └── components/
-    ├── ComparisonCalculator     ← Calculadora USD→ARS: muestra las 5 rutas y la mejor
+    ├── ComparisonCalculator     ← Calculadora USD→ARS: muestra las 6 rutas y la mejor
     ├── ArbitrageLoopCalculator  ← Calcula ROI del "puré" (USD→ARS→MEP→USD)
     ├── MarketConfigPanel        ← Panel lateral para editar tasas y comisiones manualmente
     ├── AlertsBanner             ← Alerta + notificación del navegador cuando ROI supera umbral

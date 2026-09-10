@@ -1,6 +1,6 @@
 export interface WalletCommission {
   name: string;
-  slug: "mercury" | "astropay" | "belo" | "grabrfi" | "payoneer" | "santander";
+  slug: "mercury" | "astropay" | "belo" | "grabrfi" | "payoneer" | "santander" | "takenos";
   achIncoming: number; achIncomingMin?: number; achIncomingMax?: number;
   achOutgoing: number; achOutgoingMin?: number; achOutgoingMax?: number;
   wireIncoming: number; wireIncomingPercentage?: number; wireIncomingMin?: number;
@@ -28,7 +28,7 @@ export interface TransferPath {
 export interface ComparisonResult {
   astropayPath: TransferPath; payoneerPath: TransferPath;
   grabrfiPath: TransferPath; santanderPath: TransferPath;
-  binancePath: TransferPath;
-  recommendation: "astropay" | "payoneer" | "grabrfi" | "santander" | "binance";
+  binancePath: TransferPath; takenosPath: TransferPath;
+  recommendation: "astropay" | "payoneer" | "grabrfi" | "santander" | "binance" | "takenos";
   savings: number; savingsPercentage: number;
 }
