@@ -16,7 +16,7 @@ function deduction(s: TransferStep) {
 export default function ComparisonCalculator({ onCalculate }: Props) {
   const [amount, setAmount] = useState(3450);
   const result = useMemo(() => onCalculate(amount || 0), [amount, onCalculate]);
-  const paths: TransferPath[] = [result.astropayPath, result.payoneerPath, result.grabrfiPath, result.santanderPath, result.binancePath];
+  const paths: TransferPath[] = [result.astropayPath, result.payoneerPath, result.grabrfiPath, result.santanderPath, result.binancePath, result.takenosPath];
 
   return (
     <div className="glass-card rounded-xl p-6">
@@ -29,7 +29,7 @@ export default function ComparisonCalculator({ onCalculate }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {paths.map((p) => {
           const best = result.recommendation === p.id;
           return (

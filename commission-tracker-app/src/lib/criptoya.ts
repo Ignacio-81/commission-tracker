@@ -11,6 +11,7 @@ export interface LiveRates {
   payoneer: number | null;   // CCL * 0.99
   grabrfi: number | null;    // = MEP
   santander: number | null;  // = MEP
+  takenos: number | null;    // = MEP (Takenos no publica una API pública de tasas)
 }
 
 async function fetchJSON(url: string) {
@@ -39,5 +40,6 @@ export async function fetchLiveRates(): Promise<LiveRates> {
     payoneer: ccl ? ccl * 0.99 : null,
     grabrfi: mep,
     santander: mep,
+    takenos: mep,
   };
 }

@@ -12,6 +12,7 @@ export interface MarketConfig {
   astropayUsdtToArs: number;
   beloUsdtToArs: number;
   binanceUsdtToArs: number;
+  takenosUsdToArs: number;
   mercuryAchOut: number;
   mercuryWireOut: number;
   grabrfiAchOutPct: number;
@@ -35,6 +36,9 @@ const DEFAULTS: MarketConfig = {
   astropayUsdtToArs: 1475,
   beloUsdtToArs: 1470,
   binanceUsdtToArs: 1500,
+  // Takenos no publica una API/tasa consultable por CORS: se estima con el dólar MEP,
+  // igual que GrabrFi y Santander. Se sincroniza en cada refresh salvo edición manual.
+  takenosUsdToArs: 1470,
   mercuryAchOut: 0,
   mercuryWireOut: 15,
   grabrfiAchOutPct: 0.3,
@@ -128,6 +132,7 @@ export function useCommissionData() {
       { name: "Astropay", slug: "astropay", achIncoming: cfg.astropayReceiveFee, achOutgoing: 3.5, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 2.5, monthlyFee: 0, usdToArsRate: cfg.astropayUsdtToArs, lastUpdated: now, rateSource: "CriptoYa", rateIsManual: manRef.current.includes("astropayUsdtToArs") },
       { name: "Belo", slug: "belo", achIncoming: cfg.beloAchInPct, achIncomingMin: cfg.beloAchInMin, achOutgoing: 5, wireIncoming: 20, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: cfg.beloUsdtToArs, lastUpdated: now, rateSource: "CriptoYa", rateIsManual: manRef.current.includes("beloUsdtToArs") },
       { name: "Santander", slug: "santander", achIncoming: 0, achOutgoing: 0, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: rates?.santander ?? cfg.beloUsdtToArs, lastUpdated: now, rateSource: "Dolar MEP" },
+      { name: "Takenos", slug: "takenos", achIncoming: 0, achOutgoing: 0, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: cfg.takenosUsdToArs, lastUpdated: now, rateSource: "Dólar MEP (estimado, Takenos no publica API)", feeSource: "official-documentation", rateIsManual: manRef.current.includes("takenosUsdToArs") },
     ];
   };
 
@@ -135,7 +140,7 @@ export function useCommissionData() {
     try {
       const h: HistoryPoint[] = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
       const r = getResult(3450);
-      const best = [r.astropayPath, r.payoneerPath, r.grabrfiPath, r.santanderPath, r.binancePath]
+      const best = [r.astropayPath, r.payoneerPath, r.grabrfiPath, r.santanderPath, r.binancePath, r.takenosPath]
         .reduce((m, x) => (x.finalAmountARS > m.finalAmountARS ? x : m));
       const lr = ratesRef.current;
       h.push({
@@ -265,13 +270,28 @@ export function useCommissionData() {
       ],
     };
 
-    const paths = [astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath];
+    // R6 Takenos (ACH directo, sin intermediarios; 0% en todos los pasos)
+    const takenos = bySlug("takenos");
+    const tk = amountUSD - c.mercuryAchOut;
+    const r6ARS = tk * (takenos.usdToArsRate ?? c.takenosUsdToArs);
+    const takenosPath: TransferPath = {
+      id: "takenos", name: "Mercury → Takenos → CBU/CVU", finalAmountARS: r6ARS,
+      effectiveRate: r6ARS / amountUSD, totalFees: amountUSD - tk,
+      transferMethod: "Mercury → Takenos: ACH  ·  Takenos → CBU/CVU: transferencia local",
+      steps: [
+        step("Mercury", "Takenos", "ach", c.mercuryAchOut, "fixed", amountUSD, tk),
+        step("Takenos recepción (ACH)", "Takenos", "ach", 0, "percentage", tk, tk),
+        step("Takenos (USD)", "CBU/CVU (ARS)", "conversion", 0, "fixed", tk, r6ARS),
+      ],
+    };
+
+    const paths = [astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath, takenosPath];
     const best = paths.reduce((m, x) => (x.finalAmountARS > m.finalAmountARS ? x : m));
     const worst = paths.reduce((m, x) => (x.finalAmountARS < m.finalAmountARS ? x : m));
     const savings = best.finalAmountARS - worst.finalAmountARS;
 
     return {
-      astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath,
+      astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath, takenosPath,
       recommendation: best.id as ComparisonResult["recommendation"],
       savings, savingsPercentage: (savings / best.finalAmountARS) * 100,
     };
@@ -291,6 +311,7 @@ export function useCommissionData() {
         if (!man.includes("astropayUsdToArs") && rates.astropay) next.astropayUsdToArs = rates.astropay;
         if (!man.includes("beloUsdtToArs") && rates.belo) next.beloUsdtToArs = rates.belo;
         if (!man.includes("binanceUsdtToArs") && rates.binance) next.binanceUsdtToArs = rates.binance;
+        if (!man.includes("takenosUsdToArs") && rates.takenos) next.takenosUsdToArs = rates.takenos;
         cfgRef.current = next;
         localStorage.setItem(CFG_KEY, JSON.stringify(next));
         setCommissions(buildCommissions(next, rates));

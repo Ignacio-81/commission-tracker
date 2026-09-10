@@ -24,6 +24,7 @@ export default function Index() {
   const astropay = find("astropay");
   const belo = find("belo");
   const santander = find("santander");
+  const takenos = find("takenos");
 
   // Mejor conversión USD→ARS entre las tasas mostradas (incluye Binance P2P)
   const bestRate = useMemo(() => {
@@ -32,9 +33,10 @@ export default function Index() {
       astropay?.usdToArsRate,
       belo?.usdToArsRate,
       santander?.usdToArsRate,
+      takenos?.usdToArsRate,
     ].filter((v): v is number => typeof v === "number" && v > 0);
     return vals.length ? Math.max(...vals) : null;
-  }, [binanceP2p, astropay, belo, santander]);
+  }, [binanceP2p, astropay, belo, santander, takenos]);
   const isBest = (rate?: number | null) =>
     bestRate != null && rate != null && rate === bestRate;
 
@@ -42,7 +44,7 @@ export default function Index() {
   const arbRoi = useMemo(() => {
     if (!commissions.length || !santander?.usdToArsRate) return -Infinity;
     const r = calculateComparison(REF_AMOUNT);
-    const best = [r.astropayPath, r.payoneerPath, r.grabrfiPath, r.santanderPath, r.binancePath]
+    const best = [r.astropayPath, r.payoneerPath, r.grabrfiPath, r.santanderPath, r.binancePath, r.takenosPath]
       .reduce((m, x) => (x.finalAmountARS > m.finalAmountARS ? x : m));
     const divisor = santander.usdToArsRate * (1 + (santander.achOutgoing ?? 0) / 100);
     const finalUSD = divisor ? best.finalAmountARS / divisor : 0;
@@ -103,10 +105,11 @@ export default function Index() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {astropay && <ExchangeRateCard wallet={astropay} highlight={isBest(astropay.usdToArsRate)} />}
           {belo && <ExchangeRateCard wallet={belo} highlight={isBest(belo.usdToArsRate)} />}
           {santander && <ExchangeRateCard wallet={santander} highlight={isBest(santander.usdToArsRate)} />}
+          {takenos && <ExchangeRateCard wallet={takenos} highlight={isBest(takenos.usdToArsRate)} />}
         </section>
 
         <ComparisonCalculator onCalculate={calculateComparison} />
@@ -117,7 +120,7 @@ export default function Index() {
 
         <footer className="pt-8 text-center text-xs text-muted-foreground">
           Tasas FX en vivo vía CriptoYa (Belo USDC/ARS y AstroPay USDT/ARS = bid real; MEP/CCL = AL30 24hs). Las ediciones manuales del panel de Mercado tienen precedencia y se marcan "Manual".<br />
-          Comisiones verificadas con fuentes oficiales (jun-2026): Mercury, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: AstroPay (recepción/conversión) y GrabrFi USD→USDT — ajustables en el panel.<br />
+          Comisiones verificadas con fuentes oficiales (jun-2026): Mercury, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: AstroPay (recepción/conversión) y GrabrFi USD→USDT — ajustables en el panel. Takenos: 0% en los tres pasos según la ficha del proveedor; la tasa se estima con el dólar MEP porque Takenos no publica una API de tasas.<br />
           Herramienta informativa — no constituye asesoramiento financiero. Verificá comisiones antes de operar.
         </footer>
       </main>

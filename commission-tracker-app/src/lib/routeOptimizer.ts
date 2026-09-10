@@ -5,8 +5,9 @@
 // sobre todos los caminos simples, la combinación de billeteras que deja el
 // MAYOR monto final en ARS para un monto de entrada dado.
 //
-// Restricción de negocio (jun-2026): el origen es siempre Mercury y la única
-// salida desde Mercury es vía GrabrFi o Payoneer. Después, el camino es libre.
+// Restricción de negocio (jun-2026, actualizado sep-2026 con Takenos): el origen
+// es siempre Mercury y la salida desde Mercury es vía GrabrFi, Payoneer o Takenos
+// (este último ya liquida directo en ARS). Después, el camino es libre.
 //
 // La aritmética de cada arista replica EXACTAMENTE la de useCommissionData.ts
 // (rutas auditadas R1/R2/R3/R5), de modo que agregar una billetera nueva es
@@ -46,6 +47,7 @@ const NODES: Record<string, NodeDef> = {
   ars_belo:      { id: "ars_belo",      label: "ARS (Belo/MEP)",     unit: "ARS", terminal: true },
   ars_astropay:  { id: "ars_astropay",  label: "ARS (AstroPay)",     unit: "ARS", terminal: true },
   ars_binance:   { id: "ars_binance",   label: "ARS (Binance P2P)",  unit: "ARS", terminal: true },
+  ars_takenos:   { id: "ars_takenos",   label: "ARS (Takenos)",      unit: "ARS", terminal: true },
 };
 
 // ── Aristas del grafo ────────────────────────────────────────────────────────
@@ -168,6 +170,19 @@ const EDGES: EdgeDef[] = [
       const out = amt * c.beloUsdtToArs;
       return { amount: out, steps: [
         { label: "Venta USD → ARS (Belo/MEP)", fee: `× ${c.beloUsdtToArs.toLocaleString("es-AR")}`, amountOut: out, unit: "ARS" },
+      ] };
+    },
+  },
+
+  // Mercury → Takenos (ACH directo; 0% en recepción y retiro a CBU/CVU)
+  {
+    from: "mercury", to: "ars_takenos",
+    apply: (amt, c) => {
+      const afterMercury = amt - c.mercuryAchOut;
+      const out = afterMercury * c.takenosUsdToArs;
+      return { amount: out, steps: [
+        { label: "Mercury → Takenos (ACH)", fee: usd(c.mercuryAchOut), amountOut: afterMercury, unit: "USD" },
+        { label: "Takenos: recepción + retiro CBU/CVU", fee: "0% (Gratis)", amountOut: out, unit: "ARS" },
       ] };
     },
   },

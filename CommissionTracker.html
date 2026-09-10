@@ -20,7 +20,7 @@
     --secondary:222 47% 14%; --muted:222 47% 14%; --muted-foreground:215 20% 55%;
     --accent:173 80% 50%; --destructive:0 72% 51%; --success:142 76% 45%; --warning:45 93% 55%;
     --mercury:217 91% 60%; --astropay:280 70% 55%; --belo:45 100% 50%; --payoneer:24 100% 50%;
-    --grabrfi:173 70% 50%; --santander:0 75% 55%;
+    --grabrfi:173 70% 50%; --santander:0 75% 55%; --takenos:150 65% 45%;
     --border:222 47% 18%; --input:222 47% 14%; --ring:173 80% 50%; --radius:0.75rem;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -63,9 +63,11 @@
   .grid{display:grid;gap:16px}
   .g3{grid-template-columns:repeat(3,1fr)}
   .g4{grid-template-columns:repeat(4,1fr)}
+  .g6{grid-template-columns:repeat(6,1fr)}
   .g2{grid-template-columns:repeat(2,1fr)}
-  @media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:620px){.g2,.g3,.g4{grid-template-columns:1fr}}
+  @media(max-width:1100px){.g6{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:900px){.g3,.g4,.g6{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:620px){.g2,.g3,.g4,.g6{grid-template-columns:1fr}}
   /* rate cards */
   .rate{padding:22px;position:relative;overflow:hidden}
   .rate .lbl{font-size:13px;color:hsl(var(--muted-foreground));margin-bottom:8px}
@@ -222,7 +224,7 @@
       </div>
       <button class="btn btn-primary" onclick="renderCalc()">Calcular →</button>
     </div>
-    <div class="grid g4" id="calcCards"></div>
+    <div class="grid g6" id="calcCards"></div>
     <div id="saveBanner"></div>
   </section>
 
@@ -262,7 +264,7 @@
 
   <div class="footer">
     Tasas FX en vivo vía CriptoYa (Belo USDC/ARS, AstroPay USDT/ARS y Binance P2P USDT/ARS = bid real, ya neto de comisiones del exchange; MEP/CCL = AL30 24hs). Las ediciones manuales del panel de Mercado tienen precedencia y se marcan "Manual".<br/>
-    Comisiones verificadas con fuentes oficiales (ago-2026): Mercury, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: GrabrFi USD→USDT (ajustable en el panel) y el spread local USD→USDT de la ruta Santander. La conversión de AstroPay no se descuenta aparte porque ya viene incluida en el bid de CriptoYa.<br/>
+    Comisiones verificadas con fuentes oficiales (ago-2026): Mercury, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: GrabrFi USD→USDT (ajustable en el panel) y el spread local USD→USDT de la ruta Santander. La conversión de AstroPay no se descuenta aparte porque ya viene incluida en el bid de CriptoYa. Takenos: 0% en los tres pasos según la ficha del proveedor; su tasa se estima con el dólar MEP porque no publica una API pública.<br/>
     Herramienta informativa — no constituye asesoramiento financiero. Verificá comisiones antes de operar.
   </div>
 </div>
@@ -284,6 +286,8 @@ const DEFAULTS = {
   astropayUsdToArs:1474, astropayUsdtToArs:1475,
   beloUsdtToArs:1470,
   binanceUsdtToArs:1500,
+  // Takenos no publica API de tasas: se estima con el dólar MEP (igual que GrabrFi/Santander).
+  takenosUsdToArs:1470,
   mercuryAchOut:0, mercuryWireOut:15,
   grabrfiAchOutPct:0.3, grabrfiAchOutMin:1, grabrfiAchOutMax:5,
   grabrfiUsdToUsdtPct:0.8,
@@ -321,7 +325,7 @@ function setConfigKey(k,v){
 function resetConfig(){config={...DEFAULTS};manualKeys=[];saveConfig();refreshData();}
 
 /* ---------- Live rates ---------- */
-let rates={belo:null,astropay:null,binance:null,mep:null,ccl:null,payoneer:null,grabrfi:null,santander:null};
+let rates={belo:null,astropay:null,binance:null,mep:null,ccl:null,payoneer:null,grabrfi:null,santander:null,takenos:null};
 let lastRefresh=null, isLoading=false;
 
 async function fetchJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(u);return r.json();}
@@ -342,12 +346,13 @@ async function refreshData(){
     rates.belo=belo.totalBid||belo.bid;
     rates.binance=binance?(binance.totalBid||binance.bid):null;
     rates.payoneer=ccl?ccl*0.99:null;
-    rates.grabrfi=mep; rates.santander=mep;
+    rates.grabrfi=mep; rates.santander=mep; rates.takenos=mep;
     // sync non-manual config rate keys from API
     if(!manualKeys.includes('astropayUsdtToArs')) config.astropayUsdtToArs=rates.astropay;
     if(!manualKeys.includes('astropayUsdToArs'))  config.astropayUsdToArs=rates.astropay;
     if(!manualKeys.includes('beloUsdtToArs'))     config.beloUsdtToArs=rates.belo;
     if(!manualKeys.includes('binanceUsdtToArs') && rates.binance) config.binanceUsdtToArs=rates.binance;
+    if(!manualKeys.includes('takenosUsdToArs') && rates.takenos) config.takenosUsdToArs=rates.takenos;
     saveConfig();
     lastRefresh=new Date();
     snapshot();
@@ -368,7 +373,8 @@ function wallets(){
     {name:'GrabrFi',slug:'grabrfi',tone:'--grabrfi',achIn:0,achInTxt:'Gratis',achOut:config.grabrfiAchOutPct,achOutTxt:config.grabrfiAchOutPct+'% (mín $'+config.grabrfiAchOutMin+', máx $'+config.grabrfiAchOutMax+')',rate:rates.grabrfi},
     {name:'Astropay',slug:'astropay',tone:'--astropay',achIn:0,achInTxt:'Gratis',achOut:3.5,achOutTxt:'$3.5 USD',rate:config.astropayUsdtToArs},
     {name:'Belo',slug:'belo',tone:'--belo',achIn:config.beloAchInPct,achInTxt:config.beloAchInPct+'% (mín $'+config.beloAchInMin+')',achOut:5,achOutTxt:'$5 USD',rate:config.beloUsdtToArs},
-    {name:'Santander',slug:'santander',tone:'--santander',achIn:0,achInTxt:'Gratis',achOut:0,achOutTxt:'Gratis',rate:rates.santander}
+    {name:'Santander',slug:'santander',tone:'--santander',achIn:0,achInTxt:'Gratis',achOut:0,achOutTxt:'Gratis',rate:rates.santander},
+    {name:'Takenos',slug:'takenos',tone:'--takenos',achIn:0,achInTxt:'Gratis',achOut:0,achOutTxt:'Gratis',rate:config.takenosUsdToArs}
   ];
 }
 
@@ -448,8 +454,18 @@ function calculateComparison(amount){
       step('Spread local USD→USDT','Belo','conversion',c.beloUsdToUsdtSpread,'percentage',amount-c.mercuryWireOut,s),
       step('Belo (USD)','Belo (ARS)','conversion',0,'fixed',s,r4ARS)
     ]};
-  const paths={astropay:r1,payoneer:r2,grabrfi:r3,santander:r4,binance:r5};
-  const arr=[r1,r2,r3,r4,r5];
+  // R6 Takenos (ACH directo; 0% en todos los pasos según la ficha del proveedor)
+  const tk=amount-mercAch;
+  const r6ARS=tk*c.takenosUsdToArs;
+  const r6={id:'takenos',name:'Mercury → Takenos → CBU/CVU',finalAmountARS:r6ARS,
+    transferMethod:'Mercury → Takenos: ACH  ·  Takenos → CBU/CVU: transferencia local',
+    steps:[
+      step('Mercury','Takenos','ach',mercAch,'fixed',amount,tk),
+      step('Takenos recepción (ACH)','Takenos','ach',0,'percentage',tk,tk),
+      step('Takenos (USD)','CBU/CVU (ARS)','conversion',0,'fixed',tk,r6ARS)
+    ]};
+  const paths={astropay:r1,payoneer:r2,grabrfi:r3,santander:r4,binance:r5,takenos:r6};
+  const arr=[r1,r2,r3,r4,r5,r6];
   const best=arr.reduce((m,x)=>x.finalAmountARS>m.finalAmountARS?x:m);
   const worst=arr.reduce((m,x)=>x.finalAmountARS<m.finalAmountARS?x:m);
   const savings=best.finalAmountARS-worst.finalAmountARS;
@@ -468,7 +484,8 @@ function renderRateCards(){
     {name:'Astropay',rate:config.astropayUsdtToArs,man:isMan('astropayUsdtToArs'),tone:'--astropay'},
     {name:'Belo',rate:config.beloUsdtToArs,man:isMan('beloUsdtToArs'),tone:'--belo'},
     {name:'Binance P2P',rate:config.binanceUsdtToArs,man:isMan('binanceUsdtToArs'),tone:'--grabrfi'},
-    {name:'Santander (MEP)',rate:rates.santander,man:false,tone:'--santander'}
+    {name:'Santander (MEP)',rate:rates.santander,man:false,tone:'--santander'},
+    {name:'Takenos (est. MEP)',rate:config.takenosUsdToArs,man:isMan('takenosUsdToArs'),tone:'--takenos'}
   ];
   document.getElementById('rateCards').innerHTML=data.map(d=>`
     <div class="glass-card rate" style="border-left:3px solid hsl(var(${d.tone}))">
@@ -488,7 +505,7 @@ function stepLine(s){
 function renderCalc(){
   const amt=parseFloat(document.getElementById('calcAmount').value)||0;
   const r=calculateComparison(amt);
-  const order=['astropay','payoneer','grabrfi','santander','binance'];
+  const order=['astropay','payoneer','grabrfi','santander','binance','takenos'];
   document.getElementById('calcCards').innerHTML=order.map(id=>{
     const p=r[id], best=r.recommendation===id;
     return `<div class="route-card ${best?'best':''}">
