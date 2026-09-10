@@ -36,8 +36,11 @@ const DEFAULTS: MarketConfig = {
   astropayUsdtToArs: 1475,
   beloUsdtToArs: 1470,
   binanceUsdtToArs: 1500,
-  // Takenos no publica una API/tasa consultable por CORS: se estima con el dólar MEP,
-  // igual que GrabrFi y Santander. Se sincroniza en cada refresh salvo edición manual.
+  // Takenos no publica una API/tasa consultable por CORS. Se estima con el "dólar cripto"
+  // de dolarapi.com (CCL vía USDC/USDT) porque Takenos opera con stablecoins, no con el
+  // bono AL30 del MEP. Verificado contra la app de Takenos (sep-2026): el dólar cripto
+  // está a ~0.2% de la tasa real, contra ~3% de diferencia si se usa MEP. Fallback a MEP
+  // si dolarapi.com no responde. Se sincroniza en cada refresh salvo edición manual.
   takenosUsdToArs: 1470,
   mercuryAchOut: 0,
   mercuryWireOut: 15,
@@ -132,7 +135,7 @@ export function useCommissionData() {
       { name: "Astropay", slug: "astropay", achIncoming: cfg.astropayReceiveFee, achOutgoing: 3.5, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 2.5, monthlyFee: 0, usdToArsRate: cfg.astropayUsdtToArs, lastUpdated: now, rateSource: "CriptoYa", rateIsManual: manRef.current.includes("astropayUsdtToArs") },
       { name: "Belo", slug: "belo", achIncoming: cfg.beloAchInPct, achIncomingMin: cfg.beloAchInMin, achOutgoing: 5, wireIncoming: 20, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: cfg.beloUsdtToArs, lastUpdated: now, rateSource: "CriptoYa", rateIsManual: manRef.current.includes("beloUsdtToArs") },
       { name: "Santander", slug: "santander", achIncoming: 0, achOutgoing: 0, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: rates?.santander ?? cfg.beloUsdtToArs, lastUpdated: now, rateSource: "Dolar MEP" },
-      { name: "Takenos", slug: "takenos", achIncoming: 0, achOutgoing: 0, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: cfg.takenosUsdToArs, lastUpdated: now, rateSource: "Dólar MEP (estimado, Takenos no publica API)", feeSource: "official-documentation", rateIsManual: manRef.current.includes("takenosUsdToArs") },
+      { name: "Takenos", slug: "takenos", achIncoming: 0, achOutgoing: 0, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: cfg.takenosUsdToArs, lastUpdated: now, rateSource: "Dólar cripto, dolarapi.com (estimado)", feeSource: "official-documentation", rateIsManual: manRef.current.includes("takenosUsdToArs") },
     ];
   };
 
