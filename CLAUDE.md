@@ -53,19 +53,26 @@ R2  Mercury --ACH--> Payoneer --ACH--> Belo --ARS-->       [tasa Belo/MEP]
 R3  Mercury --ACH--> GrabrFi  --ACH--> Belo --ARS-->       [tasa Belo/MEP]
 R4  Mercury --Wire-> Santander ------> Belo --ARS-->        [tasa Belo/MEP] ← el wire cuesta $15
 R5  Mercury --ACH--> GrabrFi --USDT--> Binance P2P --ARS-- [tasa Binance P2P]
-R6  Mercury --ACH--> Takenos ------------------> ARS -->   [tasa Takenos, ≈ MEP] ← 0% en todos los pasos
+R6  Mercury --ACH--> Takenos ------------------> ARS -->   [tasa Takenos, ≈ dólar cripto] ← 0% en todos los pasos
 ```
 
 **Importante:** R2, R3 y R4 liquidan todas a la tasa Belo (USDC/ARS bid de CriptoYa).
-R1 liquida a tasa AstroPay, R5 a Binance P2P y R6 a la tasa Takenos (estimada = MEP,
-ver abajo). En la práctica, las únicas tasas que mueven el resultado son Belo, AstroPay
-y Takenos.
+R1 liquida a tasa AstroPay, R5 a Binance P2P y R6 a la tasa Takenos (estimada con el
+dólar cripto, ver abajo). En la práctica, las únicas tasas que mueven el resultado son
+Belo, AstroPay y Takenos.
 
 **Sobre R6 (Takenos).** Es la ruta más simple del modelo: sale de Mercury por ACH
 (comisión `mercuryAchOut`, hoy $0) y Takenos no cobra nada ni en la recepción ACH ni en
 el retiro a CBU/CVU (0% documentado por el proveedor). No hay comisiones editables
 específicas de Takenos en el panel ⚙️ Mercado porque no hay nada que ajustar: los tres
 pasos están hardcodeados en 0 en `calculateComparison()`.
+
+**Sobre la tasa de Takenos.** Primero se estimó como `= MEP` (mismo criterio que
+GrabrFi/Santander), pero verificación cruzada contra la app de Takenos (sep-2026) mostró
+un desvío de ~3% — Takenos opera con USDC internamente, no con el bono AL30 del MEP. Se
+corrigió para usar el **dólar cripto** de `dolarapi.com` (`/v1/dolares/cripto`, campo
+`compra`), que en la misma verificación quedó a ~0.2% de la tasa real in-app. Fallback a
+MEP si `dolarapi.com` no responde. Ver `fetchLiveRates()` en `lib/criptoya.ts`.
 
 ---
 
@@ -81,7 +88,13 @@ Fuente: `https://criptoya.com` — CORS abierto, se llama directo desde el naveg
 | Dólar MEP (AL30 24hs) | `/api/dolar` | `mep.al30["24hs"].price` |
 | Dólar CCL (AL30 24hs) | `/api/dolar` | `ccl.al30["24hs"].price` |
 | Payoneer (estimado) | — | `CCL × 0.99` |
-| GrabrFi / Santander / Takenos | — | `= MEP` (Takenos no publica una API/tasa pública consultable por CORS) |
+| GrabrFi / Santander | — | `= MEP` |
+
+Fuente adicional: `https://dolarapi.com` — CORS abierto.
+
+| Variable | Endpoint dolarapi.com | Campo |
+|---|---|---|
+| Dólar cripto (Takenos, estimado) | `/v1/dolares/cripto` | `compra`, con fallback a MEP |
 
 Refresco automático: cada **5 minutos** + al volver a la pestaña (visibilitychange).
 
