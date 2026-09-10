@@ -190,7 +190,7 @@ export function useCommissionData() {
         step("Mercury", "GrabrFi", "ach", c.mercuryAchOut, "fixed", amountUSD, a),
         step("GrabrFi ACH out", "GrabrFi", "ach", c.grabrfiAchOutPct, "percentage", a, b),
         step("GrabrFi USD", "GrabrFi USDT", "conversion", c.grabrfiUsdToUsdtPct, "percentage", b, cc),
-        step("GrabrFi USDT", "Red Cripto", "conversion", wd, "fixed", cc, d),
+        step("GrabrFi retiro USDT (fee plataforma)", "Red Cripto", "conversion", wd, "fixed", cc, d),
         step("AstroPay (USDT)", "AstroPay (ARS)", "conversion", c.astropayReceiveFee, "fixed", d, r1ARS),
       ],
     };
@@ -206,18 +206,21 @@ export function useCommissionData() {
         step("Mercury", "GrabrFi", "ach", c.mercuryAchOut, "fixed", amountUSD, a),
         step("GrabrFi ACH out", "GrabrFi", "ach", c.grabrfiAchOutPct, "percentage", a, b),
         step("GrabrFi USD", "GrabrFi USDT", "conversion", c.grabrfiUsdToUsdtPct, "percentage", b, cc),
-        step("GrabrFi USDT", "Binance (red)", "conversion", wd, "fixed", cc, binanceUSDT),
+        step("GrabrFi retiro USDT (fee plataforma)", "Binance (red)", "conversion", wd, "fixed", cc, binanceUSDT),
         step("Binance P2P (USDT→ARS)", "ARS", "conversion", 0, "fixed", binanceUSDT, r5ARS),
       ],
     };
 
     // R2 Payoneer → Belo
     let p = amountUSD - mercury.achOutgoing;
+    const pAfterMercury = p;
     p -= (p * payoneer.achIncoming) / 100;
+    const pAfterPayoneerRecv = p;
     // Retiro Payoneer USD→USD (a la cuenta US de Belo): fee FIJO desde mar-2025
     // $1.5 estándar (<$50k/mes); $4 si el monto es < umbral (~$400).
     const pOut = p < c.payoneerSmallThreshold ? c.payoneerAchOutSmall : c.payoneerAchOutFixed;
     p -= pOut;
+    const pAfterPayoneerRetiro = p;
     p -= Math.max((p * c.beloAchInPct) / 100, c.beloAchInMin);
     const r2ARS = p * (belo.usdToArsRate ?? beloRate);
     const payoneerPath: TransferPath = {
@@ -225,17 +228,19 @@ export function useCommissionData() {
       effectiveRate: r2ARS / amountUSD, totalFees: amountUSD - p,
       transferMethod: "Mercury → Payoneer: ACH  ·  Payoneer → Belo: ACH",
       steps: [
-        step("Mercury", "Payoneer", "ach", mercury.achOutgoing, "fixed", amountUSD, amountUSD - mercury.achOutgoing),
-        step("Payoneer recepción", "Payoneer", "ach", payoneer.achIncoming, "percentage", amountUSD - mercury.achOutgoing, 0),
-        step("Payoneer retiro USD", "Belo", "ach", pOut, "fixed", 0, 0),
-        step("Belo recepción", "Belo", "ach", c.beloAchInPct, "percentage", 0, p),
+        step("Mercury", "Payoneer", "ach", mercury.achOutgoing, "fixed", amountUSD, pAfterMercury),
+        step("Payoneer recepción", "Payoneer", "ach", payoneer.achIncoming, "percentage", pAfterMercury, pAfterPayoneerRecv),
+        step("Payoneer retiro USD", "Belo", "ach", pOut, "fixed", pAfterPayoneerRecv, pAfterPayoneerRetiro),
+        step("Belo recepción", "Belo", "ach", c.beloAchInPct, "percentage", pAfterPayoneerRetiro, p),
         step("Belo (USD)", "Belo (ARS)", "conversion", 0, "fixed", p, r2ARS),
       ],
     };
 
     // R3 GrabrFi → Belo
     let g = amountUSD - mercury.achOutgoing;
+    const gAfterMercury = g;
     g -= clamp((g * grabrfi.achOutgoing) / 100, grabrfi.achOutgoingMin!, grabrfi.achOutgoingMax!);
+    const gAfterGrabrfi = g;
     g -= Math.max((g * c.beloAchInPct) / 100, c.beloAchInMin);
     const r3ARS = g * (belo.usdToArsRate ?? beloRate);
     const grabrfiPath: TransferPath = {
@@ -243,9 +248,9 @@ export function useCommissionData() {
       effectiveRate: r3ARS / amountUSD, totalFees: amountUSD - g,
       transferMethod: "Mercury → GrabrFi: ACH  ·  GrabrFi → Belo: ACH",
       steps: [
-        step("Mercury", "GrabrFi", "ach", mercury.achOutgoing, "fixed", amountUSD, amountUSD - mercury.achOutgoing),
-        step("GrabrFi", "Belo", "ach", grabrfi.achOutgoing, "percentage", amountUSD - mercury.achOutgoing, 0),
-        step("Belo recepción", "Belo", "ach", c.beloAchInPct, "percentage", 0, g),
+        step("Mercury", "GrabrFi", "ach", mercury.achOutgoing, "fixed", amountUSD, gAfterMercury),
+        step("GrabrFi", "Belo", "ach", grabrfi.achOutgoing, "percentage", gAfterMercury, gAfterGrabrfi),
+        step("Belo recepción", "Belo", "ach", c.beloAchInPct, "percentage", gAfterGrabrfi, g),
         step("Belo (USD)", "Belo (ARS)", "conversion", 0, "fixed", g, r3ARS),
       ],
     };

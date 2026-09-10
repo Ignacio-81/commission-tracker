@@ -61,6 +61,14 @@ Las únicas comisiones sin fuente pública (**AstroPay** recepción/conversión 
 
 ---
 
+## 7. Actualización — sep-2026
+
+- **Belo ACH in, 0.3% → 0.5%.** El tarifario público seguía diciendo 0.3% (línea 37 de este documento), pero una operación real medida el 5-ago-2026 (1300 USDC, descontó 6,50 → 0,500%) y la documentación de Belo actualizada a mediados de 2026 confirman que la comisión vigente es **0.5%** (mín $0.50). El código ya tenía este valor corregido desde esa medición (`beloAchInPct: 0.5` en `MarketConfig`); esta línea del documento quedaba desactualizada y se deja constancia acá. El valor medido/documentado tiene precedencia sobre el 0.3% original.
+- **Bug de UI corregido (solo app React):** en las rutas R2 (Payoneer→Belo) y R3 (GrabrFi→Belo), el paso "Belo recepción" mostraba **-US$ 0,00 (0.5%)** en la calculadora — el descuento en dólares aparecía en cero aunque el porcentaje sí se veía. Causa: `calculateComparison()` pasaba `0` hardcodeado como monto previo a la comisión en vez del monto real en ese punto de la ruta. El total final en ARS **siempre fue correcto** (el `0` era solo un dato de display, no entraba en el cálculo de la ruta); el bug era puramente visual, pero podía leerse como que Belo "no cobra" esa comisión. `CommissionTracker.html` no tenía este bug (ya calculaba el monto real). Corregido en `useCommissionData.ts` pasando los montos intermedios reales (`pAfterPayoneerRetiro`, `gAfterGrabrfi`, etc.) a cada paso.
+- **Aclaración sobre el retiro de USDT de GrabrFi ($38,59 en el ejemplo de US$3.450):** ese monto **no es un fee de red blockchain** — es la comisión propia de GrabrFi por el retiro (`grabrfiUsdtWithdrawPct` 1.1% + `grabrfiUsdtWithdrawFixed` $1 fijo, oficial desde 6-ene-2025, ver sección 3). Un fee de red real en TRC20/BSC ronda entre US$1 y US$3; los ~US$38 salen de aplicar 1.1% sobre el monto retirado (~US$3.400), no del costo de la red. Se renombró el paso en la UI de "GrabrFi USDT → Red Cripto" a "GrabrFi retiro USDT (fee plataforma) → Red Cripto" para que no se confunda con un costo de red. Esto no cambia ningún número: solo aclara la etiqueta. Confirma además que triangular por USDT (rutas R1/R5) es la opción más cara del modelo frente a ACH directo (R2/R3).
+
+---
+
 ### Fuentes
 - Mercury — [Covering recipient fees for USD international wires](https://support.mercury.com/hc/en-us/articles/28773111244436-Covering-recipient-fees-for-USD-international-wires) · [Pricing](https://mercury.com/pricing)
 - GrabrFi — [Full schedule of fees](https://help.grabrfi.com/en/content/full-schedule-of-fees) · [Stablecoin transfer fees](https://help.grabrfi.com/en/content/what-are-the-fees-and-processing-times-for-transfers)
