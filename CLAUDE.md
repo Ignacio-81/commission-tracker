@@ -39,7 +39,7 @@ Cuando se haga un cambio de lógica (comisiones, rutas, fórmulas), **aplicarlo 
 | `astropay` | Destino cripto — recibe USDT y permite retiro en ARS |
 | `belo` | Destino principal — recibe USD por ACH desde GrabrFi o Payoneer, convierte a ARS vía MEP |
 | `payoneer` | Intermediario alternativo — recibe de Mercury y reenvía a Belo |
-| `santander` | Rol especial — recibe wire de Mercury y reenvía a Belo; también es el tipo de cambio MEP de referencia para el cálculo del puré |
+| `santander` | Destino directo — recibe wire de Mercury y liquida ahí mismo a ARS operando el dólar MEP (ya no reenvía a Belo); también es el tipo de cambio MEP de referencia para el cálculo del puré |
 | `takenos` | Destino directo — recibe ACH de Mercury vía cuenta FBO y retira directo a CBU/CVU en ARS, sin intermediarios |
 | Binance P2P | Solo para la ruta R5 (no tiene slug propio, usa la tasa `binanceUsdtToArs`) |
 
@@ -51,15 +51,15 @@ Cuando se haga un cambio de lógica (comisiones, rutas, fórmulas), **aplicarlo 
 R1  Mercury --ACH--> GrabrFi --USDT--> AstroPay --ARS-->  [tasa AstroPay]
 R2  Mercury --ACH--> Payoneer --ACH--> Belo --ARS-->       [tasa Belo/MEP]
 R3  Mercury --ACH--> GrabrFi  --ACH--> Belo --ARS-->       [tasa Belo/MEP]
-R4  Mercury --Wire-> Santander ------> Belo --ARS-->        [tasa Belo/MEP] ← el wire cuesta $15
+R4  Mercury --Wire-> Santander --Dólar MEP--> ARS -->       [tasa Santander/MEP] ← el wire cuesta $15
 R5  Mercury --ACH--> GrabrFi --USDT--> Binance P2P --ARS-- [tasa Binance P2P]
 R6  Mercury --ACH--> Takenos ------------------> ARS -->   [tasa Takenos, ≈ dólar cripto] ← 0% en todos los pasos
 ```
 
-**Importante:** R2, R3 y R4 liquidan todas a la tasa Belo (USDC/ARS bid de CriptoYa).
-R1 liquida a tasa AstroPay, R5 a Binance P2P y R6 a la tasa Takenos (estimada con el
-dólar cripto, ver abajo). En la práctica, las únicas tasas que mueven el resultado son
-Belo, AstroPay y Takenos.
+**Importante:** R2 y R3 liquidan a la tasa Belo (USDC/ARS bid de CriptoYa). R4 liquida
+directo en Santander a la tasa MEP (sin pasar por Belo). R1 liquida a tasa AstroPay, R5
+a Binance P2P y R6 a la tasa Takenos (estimada con el dólar cripto, ver abajo). En la
+práctica, las únicas tasas que mueven el resultado son Belo, AstroPay, MEP y Takenos.
 
 **Sobre R6 (Takenos).** Es la ruta más simple del modelo: sale de Mercury por ACH
 (comisión `mercuryAchOut`, hoy $0) y Takenos no cobra nada ni en la recepción ACH ni en
@@ -118,7 +118,6 @@ Refresco automático: cada **5 minutos** + al volver a la pestaña (visibilitych
 | AstroPay recepción | $0 | ⚠️ Estimado — ajustable en panel |
 | AstroPay conversión | 2.5% | ℹ️ Solo informativo — **no se usa en el cálculo** (ver abajo) |
 | AstroPay ACH out | $3.50 | ℹ️ Solo informativo — **no se usa en el cálculo** |
-| Spread local USD→USDT (ruta R4) | 4% | ⚠️ Estimado sin fuente — ajustable en panel |
 | Takenos ACH in | 0% | ✅ Oficial (ficha del proveedor) |
 | Takenos retiro CBU/CVU | 0% | ✅ Oficial (ficha del proveedor) |
 
@@ -133,11 +132,10 @@ cambien un resultado — no participan de `calculateComparison()`.
 sería contarlo dos veces. Mismo criterio para Binance P2P en R5. La tabla lo muestra con un
 asterisco y nota al pie.
 
-**Sobre el spread de 4% de R4.** Es el fee más grande del modelo y no tiene fuente oficial.
-Sensibilidad medida (ago-2026): incluso con spread **0%** R4 pierde contra R3 por debajo de
-~US$5.000 — el wire de $15 solo ya la descarta — y arriba de ese monto necesitaría un spread
-≤0,25% para ganar. Conclusión: el valor exacto mueve el número mostrado, **no la
-recomendación**.
+**Sobre R4 (Santander).** Liquida directo a ARS en Santander operando el dólar MEP, sin
+pasar por Belo: no hay spread ni comisión de conversión adicional que modelar (mismo
+criterio que R1/R5 con el `totalBid` de CriptoYa). El único costo de la ruta es el wire
+de Mercury ($15). `santander.usdToArsRate` ya es la tasa MEP (`= MEP` en `criptoya.ts`).
 
 El panel marca como "Manual" cualquier campo que el usuario haya editado manualmente,
 y esos valores tienen precedencia sobre los que traen las APIs.

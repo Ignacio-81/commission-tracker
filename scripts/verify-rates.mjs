@@ -45,7 +45,6 @@ const EXPECTED_FEES = {
   astropayReceiveFee: 0,
   beloAchInPct: 0.5, // medido 5-ago-2026 (6,50 sobre 1300); el tarifario público dice 0,3%
   beloAchInMin: 0.5,
-  beloUsdToUsdtSpread: 4,
   payoneerAchIn: 1,
   payoneerAchOutFixed: 1.5,
   payoneerAchOutSmall: 4,
@@ -68,7 +67,6 @@ const FEE_STATUS = {
   astropayReceiveFee: "estimated",
   beloAchInPct: "measured",
   beloAchInMin: "official",
-  beloUsdToUsdtSpread: "estimated",
   payoneerAchIn: "official",
   payoneerAchOutFixed: "official",
   payoneerAchOutSmall: "official",
@@ -120,9 +118,9 @@ function computeRoutes(amount, c, rates) {
   g -= Math.max((g * c.beloAchInPct) / 100, c.beloAchInMin);
   const R3 = g * rates.belo;
 
-  let s = amount - c.mercuryWireOut;
-  s -= (s * c.beloUsdToUsdtSpread) / 100;
-  const R4 = s * rates.belo;
+  // Liquida directo a Dólar MEP en Santander, sin pasar por Belo (ni spread adicional).
+  const s = amount - c.mercuryWireOut;
+  const R4 = s * rates.mep;
 
   return { R1, R2, R3, R4, R5 };
 }

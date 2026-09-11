@@ -24,7 +24,6 @@ export interface MarketConfig {
   astropayReceiveFee: number;
   beloAchInPct: number;
   beloAchInMin: number;
-  beloUsdToUsdtSpread: number;
   payoneerAchIn: number;
   payoneerAchOutFixed: number;
   payoneerAchOutSmall: number;
@@ -55,7 +54,6 @@ const DEFAULTS: MarketConfig = {
   // El tarifario público de Belo dice 0,3%; el valor medido tiene precedencia.
   beloAchInPct: 0.5,
   beloAchInMin: 0.5,
-  beloUsdToUsdtSpread: 4,
   payoneerAchIn: 1,
   payoneerAchOutFixed: 1.5,
   payoneerAchOutSmall: 4,
@@ -255,26 +253,22 @@ export function useCommissionData() {
       ],
     };
 
-    // R4 Santander Wire → Belo  (¡sin paso USDT→ARS!)
-    // NOTA: `beloUsdToUsdtSpread` (4%) es un ESTIMADO sin fuente oficial y es la comisión más
-    // grande del modelo. Sensibilidad medida (ago-2026): incluso con spread 0% esta ruta pierde
-    // contra R3 por debajo de ~US$5.000 (el wire de $15 solo ya la descarta), y arriba de ese
-    // monto necesitaría un spread ≤0,25% para ganar. O sea: el valor exacto afecta el número
-    // mostrado, no la recomendación. Ajustable en el panel ⚙️ Mercado.
-    let s = amountUSD - c.mercuryWireOut;
-    const spreadFee = (s * c.beloUsdToUsdtSpread) / 100;
-    s -= spreadFee;
-    const r4ARS = s * (belo.usdToArsRate ?? beloRate);
+    // R4 Santander Wire → Dólar MEP (liquidación directa, ¡sin pasar por Belo!)
+    // El monto llega a la cuenta USD de Santander vía wire y se convierte directo a ARS
+    // operando el dólar MEP ahí mismo. `santander.usdToArsRate` YA es la tasa MEP (ver
+    // criptoya.ts: `santander: mep`), así que no hay spread adicional que modelar acá —
+    // mismo criterio que R1/R5 con el `totalBid` de CriptoYa.
+    const santander = bySlug("santander");
+    const s = amountUSD - c.mercuryWireOut;
+    const r4ARS = s * (santander.usdToArsRate ?? c.beloUsdtToArs);
     const santanderPath: TransferPath = {
-      id: "santander", name: "Mercury Wire → Santander → Belo", finalAmountARS: r4ARS,
+      id: "santander", name: "Mercury Wire → Santander → Dólar MEP", finalAmountARS: r4ARS,
       effectiveRate: r4ARS / amountUSD, totalFees: amountUSD - s,
-      transferMethod: "Mercury → Santander: Wire  ·  Santander → Belo: transferencia local",
+      transferMethod: "Mercury → Santander: Wire  ·  Santander → ARS: Dólar MEP",
       steps: [
-        step("Mercury", "Santander", "wire", c.mercuryWireOut, "fixed", amountUSD, amountUSD - c.mercuryWireOut),
-        step("Santander recepción Wire", "Santander", "wire", 0, "fixed", amountUSD - c.mercuryWireOut, amountUSD - c.mercuryWireOut),
-        step("Santander (USD)", "Belo (USD)", "internal", 0, "fixed", amountUSD - c.mercuryWireOut, amountUSD - c.mercuryWireOut),
-        step("Spread local USD→USDT", "Belo", "conversion", c.beloUsdToUsdtSpread, "percentage", amountUSD - c.mercuryWireOut, s),
-        step("Belo (USD)", "Belo (ARS)", "conversion", 0, "fixed", s, r4ARS),
+        step("Mercury", "Santander", "wire", c.mercuryWireOut, "fixed", amountUSD, s),
+        step("Santander recepción Wire", "Santander", "wire", 0, "fixed", s, s),
+        step("Santander (USD)", "ARS (Dólar MEP)", "conversion", 0, "fixed", s, r4ARS),
       ],
     };
 

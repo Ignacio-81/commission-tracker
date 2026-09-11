@@ -298,7 +298,6 @@ const DEFAULTS = {
   // beloAchInPct MEDIDO 5-ago-2026: entraron 1300 USDC, descontó 6,50 → 0,500%
   // (el tarifario público dice 0,3%; el valor medido tiene precedencia)
   beloAchInPct:0.5, beloAchInMin:0.5,
-  beloUsdToUsdtSpread:4,
   payoneerAchIn:1, payoneerAchOutFixed:1.5, payoneerAchOutSmall:4, payoneerSmallThreshold:400
 };
 const FEE_FIELDS=[
@@ -307,7 +306,6 @@ const FEE_FIELDS=[
   ['grabrfiUsdToUsdtPct','GrabrFi USD→USDT %'],['grabrfiUsdtWithdrawPct','GrabrFi USDT withdraw %'],['grabrfiUsdtWithdrawFixed','GrabrFi USDT withdraw fijo'],
   ['astropayReceiveFee','AstroPay recepción (USD)'],
   ['beloAchInPct','Belo ACH in %'],['beloAchInMin','Belo ACH in mín'],
-  ['beloUsdToUsdtSpread','Belo spread USD→USDT % (Santander)'],
   ['payoneerAchIn','Payoneer ACH in %'],['payoneerAchOutFixed','Payoneer retiro USD fijo'],['payoneerAchOutSmall','Payoneer retiro <umbral (USD)'],['payoneerSmallThreshold','Payoneer umbral monto chico (USD)']
 ];
 
@@ -448,18 +446,17 @@ function calculateComparison(amount){
       step('Belo recepción','Belo','ach',g2,'fixed',amount-mercAch-g1,g),
       step('Belo (USD)','Belo (ARS)','conversion',0,'fixed',g,r3ARS)
     ]};
-  // R4 Santander Wire → Belo  (NO USDT→ARS step; 4% spread only)
-  let s=amount-c.mercuryWireOut;
-  const spreadFee=s*c.beloUsdToUsdtSpread/100; s-=spreadFee;
-  const r4ARS=s*beloRate;
-  const r4={id:'santander',name:'Mercury Wire → Santander → Belo',finalAmountARS:r4ARS,
-    transferMethod:'Mercury → Santander: Wire  ·  Santander → Belo: transferencia local',
+  // R4 Santander Wire → Dólar MEP (liquidación directa, sin pasar por Belo)
+  // rates.santander YA es la tasa MEP (ver fetchRates: rates.santander=mep), así que no hay
+  // spread adicional que modelar acá — mismo criterio que R1/R5 con el totalBid de CriptoYa.
+  const s=amount-c.mercuryWireOut;
+  const r4ARS=s*(rates.santander||beloRate);
+  const r4={id:'santander',name:'Mercury Wire → Santander → Dólar MEP',finalAmountARS:r4ARS,
+    transferMethod:'Mercury → Santander: Wire  ·  Santander → ARS: Dólar MEP',
     steps:[
-      step('Mercury','Santander','wire',c.mercuryWireOut,'fixed',amount,amount-c.mercuryWireOut),
-      step('Santander recepción Wire','Santander','wire',0,'fixed',amount-c.mercuryWireOut,amount-c.mercuryWireOut),
-      step('Santander (USD)','Belo (USD)','internal',0,'fixed',amount-c.mercuryWireOut,amount-c.mercuryWireOut),
-      step('Spread local USD→USDT','Belo','conversion',c.beloUsdToUsdtSpread,'percentage',amount-c.mercuryWireOut,s),
-      step('Belo (USD)','Belo (ARS)','conversion',0,'fixed',s,r4ARS)
+      step('Mercury','Santander','wire',c.mercuryWireOut,'fixed',amount,s),
+      step('Santander recepción Wire','Santander','wire',0,'fixed',s,s),
+      step('Santander (USD)','ARS (Dólar MEP)','conversion',0,'fixed',s,r4ARS)
     ]};
   // R6 Takenos (ACH directo; 0% en todos los pasos según la ficha del proveedor)
   const tk=amount-mercAch;
