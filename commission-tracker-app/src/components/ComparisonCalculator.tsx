@@ -9,8 +9,8 @@ interface Props {
 
 function deduction(s: TransferStep) {
   if (s.feeType === "percentage" && s.fee > 0) return `-${fmtUSD((s.amount * s.fee) / 100)} (${s.fee}%)`;
-  if (s.feeType === "fixed") return s.fee > 0 ? `-${fmtUSD(s.fee)}` : "-US$ 0,00";
-  return "—";
+  if (s.feeType === "fixed" && s.fee > 0) return `-${fmtUSD(s.fee)}`;
+  return "-US$ 0,00";
 }
 
 export default function ComparisonCalculator({ onCalculate }: Props) {
@@ -29,29 +29,36 @@ export default function ComparisonCalculator({ onCalculate }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
         {paths.map((p) => {
           const best = result.recommendation === p.id;
+          const chargedSteps = p.steps.filter((s) => s.fee > 0);
           return (
             <div key={p.id}
-              className={`rounded-xl border p-4 ${best ? "border-success bg-success/10" : "border-border/60 bg-card/50"}`}>
+              className={`flex flex-col rounded-xl border p-4 ${best ? "border-success bg-success/10" : "border-border/60 bg-card/50"}`}>
               <h4 className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold">
                 {p.name}
                 {best && <span className="rounded-full bg-success/20 px-2 py-0.5 text-xs text-success">↗ Mejor</span>}
               </h4>
               <p className="mb-3 mt-0.5 text-[11px] text-muted-foreground">{p.transferMethod}</p>
-              {p.steps.map((s, i) => (
-                <div key={i} className="flex justify-between gap-2 py-1 text-[12.5px] text-foreground/70">
-                  <span>{s.from}{s.to && s.to !== s.from ? ` → ${s.to}` : ""}</span>
-                  <span className="whitespace-nowrap font-semibold text-destructive">{deduction(s)}</span>
-                </div>
-              ))}
+              <div className="flex-1">
+                {chargedSteps.length === 0 ? (
+                  <p className="py-1 text-[12.5px] italic text-muted-foreground">Sin comisiones en ningún paso</p>
+                ) : (
+                  chargedSteps.map((s, i) => (
+                    <div key={i} className="flex items-baseline justify-between gap-3 py-1 text-[12.5px] text-foreground/70">
+                      <span>{s.from}{s.to && s.to !== s.from ? ` → ${s.to}` : ""}</span>
+                      <span className="whitespace-nowrap font-semibold tabular-nums text-destructive">{deduction(s)}</span>
+                    </div>
+                  ))
+                )}
+              </div>
               <div className="mt-3 border-t border-border/50 pt-3">
-                <div className="flex justify-between text-sm">
+                <div className="flex items-baseline justify-between text-sm">
                   <span className="text-muted-foreground">Total:</span>
-                  <span className="text-xl font-extrabold">{fmtARS(p.finalAmountARS)}</span>
+                  <span className="text-xl font-extrabold tabular-nums">{fmtARS(p.finalAmountARS)}</span>
                 </div>
-                <div className="mt-0.5 text-right text-xs text-primary">
+                <div className="mt-0.5 text-right text-xs tabular-nums text-primary">
                   1 USD = {fmtNum(p.finalAmountARS / (amount || 1))} ARS
                 </div>
               </div>

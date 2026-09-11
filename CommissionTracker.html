@@ -63,11 +63,10 @@
   .grid{display:grid;gap:16px}
   .g3{grid-template-columns:repeat(3,1fr)}
   .g4{grid-template-columns:repeat(4,1fr)}
-  .g6{grid-template-columns:repeat(6,1fr)}
+  .g6{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
   .g2{grid-template-columns:repeat(2,1fr)}
-  @media(max-width:1100px){.g6{grid-template-columns:repeat(3,1fr)}}
-  @media(max-width:900px){.g3,.g4,.g6{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:620px){.g2,.g3,.g4,.g6{grid-template-columns:1fr}}
+  @media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:620px){.g2,.g3,.g4{grid-template-columns:1fr}}
   /* rate cards */
   .rate{padding:22px;position:relative;overflow:hidden}
   .rate .lbl{font-size:13px;color:hsl(var(--muted-foreground));margin-bottom:8px}
@@ -91,12 +90,12 @@
   .route-card.best{border-color:hsl(var(--success));background:hsl(var(--success)/0.08)}
   .route-card h4{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
   .route-method{font-size:11px;color:hsl(var(--muted-foreground));margin-bottom:12px}
-  .step{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0;color:hsl(215 20% 70%)}
-  .step .ded{color:hsl(var(--destructive));font-weight:600;white-space:nowrap}
+  .step{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12.5px;padding:4px 0;color:hsl(215 20% 70%)}
+  .step .ded{color:hsl(var(--destructive));font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
   .route-tot{margin-top:12px;padding-top:12px;border-top:1px solid hsl(var(--border)/0.5)}
-  .route-tot .t{display:flex;justify-content:space-between;font-size:13px}
-  .route-tot .big{font-size:22px;font-weight:800;text-align:right}
-  .route-tot .rate-line{color:hsl(var(--primary));font-size:12px;text-align:right;margin-top:2px}
+  .route-tot .t{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+  .route-tot .big{font-size:22px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+  .route-tot .rate-line{color:hsl(var(--primary));font-size:12px;text-align:right;margin-top:2px;font-variant-numeric:tabular-nums}
   .save-banner{margin-top:18px;padding:18px 22px;border-radius:var(--radius);
     background:hsl(var(--success)/0.1);border:1px solid hsl(var(--success)/0.4);display:flex;justify-content:space-between;align-items:center}
   .save-banner .big{font-size:26px;font-weight:800;color:hsl(var(--success))}
@@ -500,10 +499,7 @@ function renderRateCards(){
     </div>`).join('');
 }
 function stepLine(s){
-  let txt;
-  if(s.feeType==='percentage'&&s.fee>0) txt=`-${fmtUSD(s.amount*s.fee/100)} (${s.fee}%)`;
-  else if(s.feeType==='fixed') txt=s.fee>0?`-${fmtUSD(s.fee)}`:'-US$ 0,00';
-  else txt='—';
+  const txt=s.feeType==='percentage'&&s.fee>0?`-${fmtUSD(s.amount*s.fee/100)} (${s.fee}%)`:`-${fmtUSD(s.fee)}`;
   return `<div class="step"><span>${s.from}${s.to&&s.to!==s.from?' → '+s.to:''}</span><span class="ded">${txt}</span></div>`;
 }
 function renderCalc(){
@@ -512,10 +508,11 @@ function renderCalc(){
   const order=['astropay','payoneer','grabrfi','santander','binance','takenos'];
   document.getElementById('calcCards').innerHTML=order.map(id=>{
     const p=r[id], best=r.recommendation===id;
+    const charged=p.steps.filter(s=>s.fee>0);
     return `<div class="route-card ${best?'best':''}">
       <h4>${p.name} ${best?'<span class="badge up">↗ Mejor</span>':''}</h4>
       <div class="route-method">${p.transferMethod}</div>
-      ${p.steps.map(stepLine).join('')}
+      ${charged.length?charged.map(stepLine).join(''):'<div class="step" style="font-style:italic">Sin comisiones en ningún paso</div>'}
       <div class="route-tot">
         <div class="t"><span class="muted">Total:</span><span class="big">${fmtARS(p.finalAmountARS)}</span></div>
         <div class="rate-line">1 USD = ${fmtRate(p.finalAmountARS/amt)} ARS</div>
