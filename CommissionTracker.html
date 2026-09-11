@@ -263,7 +263,7 @@
 
   <div class="footer">
     Tasas FX en vivo vía CriptoYa (Belo USDC/ARS, AstroPay USDT/ARS y Binance P2P USDT/ARS = bid real, ya neto de comisiones del exchange; MEP/CCL = AL30 24hs). Las ediciones manuales del panel de Mercado tienen precedencia y se marcan "Manual".<br/>
-    Comisiones verificadas con fuentes oficiales (ago-2026): Mercury, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: GrabrFi USD→USDT (ajustable en el panel) y el spread local USD→USDT de la ruta Santander. La conversión de AstroPay no se descuenta aparte porque ya viene incluida en el bid de CriptoYa. Takenos: 0% en los tres pasos según la ficha del proveedor; su tasa se estima con el dólar cripto de dolarapi.com (CCL vía USDC/USDT) porque no publica una API pública y opera con stablecoins.<br/>
+    Comisiones verificadas con fuentes oficiales (ago-2026): Mercury, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: GrabrFi USD→USDT (ajustable en el panel) y el spread local USD→USDT de la ruta Santander. La conversión de AstroPay no se descuenta aparte porque ya viene incluida en el bid de CriptoYa. Takenos: 0% en los tres pasos según la ficha del proveedor; su tasa se toma del bid de TiendaCrypto (USDT/ARS vía CriptoYa), su proveedor de liquidez, porque no publica una API de tasas propia.<br/>
     Herramienta informativa — no constituye asesoramiento financiero. Verificá comisiones antes de operar.
   </div>
 </div>
@@ -285,9 +285,10 @@ const DEFAULTS = {
   astropayUsdToArs:1474, astropayUsdtToArs:1475,
   beloUsdtToArs:1470,
   binanceUsdtToArs:1500,
-  // Takenos no publica API de tasas: se estima con el "dólar cripto" (dolarapi.com, CCL vía
-  // USDC/USDT), porque Takenos opera con stablecoins, no con el bono AL30 del MEP.
-  // Fallback a MEP si dolarapi.com no responde.
+  // Takenos no publica una API/tasa propia: se usa el totalBid de TiendaCrypto (USDT/ARS
+  // vía CriptoYa), que calzó exacto con la tasa real mostrada in-app por Takenos en
+  // mediciones separadas (sep-2026) — evidencia de que es su proveedor de liquidez.
+  // Fallback: dólar cripto (dolarapi.com), luego MEP.
   takenosUsdToArs:1470,
   mercuryAchOut:0, mercuryWireOut:15,
   grabrfiAchOutPct:0.3, grabrfiAchOutMin:1, grabrfiAchOutMax:5,
@@ -332,25 +333,29 @@ async function refreshData(){
   if(isLoading)return; isLoading=true; document.getElementById('refIcon').className='spin';
   document.getElementById('errBox').innerHTML='';
   try{
-    const [dolar,astro,belo,binance,dolarCripto]=await Promise.all([
+    const [dolar,astro,belo,binance,dolarCripto,tiendacrypto]=await Promise.all([
       fetchJSON('https://criptoya.com/api/dolar'),
       fetchJSON('https://criptoya.com/api/astropay/usdt/ars/1'),
       fetchJSON('https://criptoya.com/api/belo/usdc/ars/1'),
       fetchJSON('https://criptoya.com/api/binancep2p/usdt/ars/1').catch(()=>null),
-      // dolarapi.com (CORS abierto): "dólar cripto" = CCL vía USDC/USDT. Es la referencia
-      // real de Takenos (opera con stablecoins, no con el bono AL30 del MEP). Verificado
-      // contra la app de Takenos (sep-2026): ~0.2% de diferencia contra ~3% usando MEP.
-      fetchJSON('https://dolarapi.com/v1/dolares/cripto').catch(()=>null)
+      // dolarapi.com (CORS abierto): "dólar cripto" = CCL vía USDC/USDT. Se usa solo como
+      // fallback de Takenos si TiendaCrypto no responde.
+      fetchJSON('https://dolarapi.com/v1/dolares/cripto').catch(()=>null),
+      // TiendaCrypto (vía CriptoYa, mismo dominio con CORS abierto): su totalBid de
+      // USDT/ARS calzó exacto (al centavo) con la tasa real mostrada in-app por Takenos
+      // en dos mediciones separadas (sep-2026) — evidencia de que es su proveedor de liquidez.
+      fetchJSON('https://criptoya.com/api/tiendacrypto/usdt/ars/1').catch(()=>null)
     ]);
     const mep=dolar?.mep?.al30?.['24hs']?.price;
     const ccl=dolar?.ccl?.al30?.['24hs']?.price;
     const cripto=dolarCripto?.compra;
+    const tiendaCryptoRate=tiendacrypto?.totalBid||tiendacrypto?.bid;
     rates.mep=mep; rates.ccl=ccl; rates.cripto=cripto;
     rates.astropay=astro.totalBid||astro.bid;
     rates.belo=belo.totalBid||belo.bid;
     rates.binance=binance?(binance.totalBid||binance.bid):null;
     rates.payoneer=ccl?ccl*0.99:null;
-    rates.grabrfi=mep; rates.santander=mep; rates.takenos=cripto||mep;
+    rates.grabrfi=mep; rates.santander=mep; rates.takenos=tiendaCryptoRate||cripto||mep;
     // sync non-manual config rate keys from API
     if(!manualKeys.includes('astropayUsdtToArs')) config.astropayUsdtToArs=rates.astropay;
     if(!manualKeys.includes('astropayUsdToArs'))  config.astropayUsdToArs=rates.astropay;

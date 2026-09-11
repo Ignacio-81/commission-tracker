@@ -53,12 +53,12 @@ R2  Mercury --ACH--> Payoneer --ACH--> Belo --ARS-->       [tasa Belo/MEP]
 R3  Mercury --ACH--> GrabrFi  --ACH--> Belo --ARS-->       [tasa Belo/MEP]
 R4  Mercury --Wire-> Santander --Dólar MEP--> ARS -->       [tasa Santander/MEP] ← el wire cuesta $15
 R5  Mercury --ACH--> GrabrFi --USDT--> Binance P2P --ARS-- [tasa Binance P2P]
-R6  Mercury --ACH--> Takenos ------------------> ARS -->   [tasa Takenos, ≈ dólar cripto] ← 0% en todos los pasos
+R6  Mercury --ACH--> Takenos ------------------> ARS -->   [tasa Takenos, = bid TiendaCrypto] ← 0% en todos los pasos
 ```
 
 **Importante:** R2 y R3 liquidan a la tasa Belo (USDC/ARS bid de CriptoYa). R4 liquida
 directo en Santander a la tasa MEP (sin pasar por Belo). R1 liquida a tasa AstroPay, R5
-a Binance P2P y R6 a la tasa Takenos (estimada con el dólar cripto, ver abajo). En la
+a Binance P2P y R6 a la tasa Takenos (= bid de TiendaCrypto, ver abajo). En la
 práctica, las únicas tasas que mueven el resultado son Belo, AstroPay, MEP y Takenos.
 
 **Sobre R6 (Takenos).** Es la ruta más simple del modelo: sale de Mercury por ACH
@@ -69,10 +69,14 @@ pasos están hardcodeados en 0 en `calculateComparison()`.
 
 **Sobre la tasa de Takenos.** Primero se estimó como `= MEP` (mismo criterio que
 GrabrFi/Santander), pero verificación cruzada contra la app de Takenos (sep-2026) mostró
-un desvío de ~3% — Takenos opera con USDC internamente, no con el bono AL30 del MEP. Se
-corrigió para usar el **dólar cripto** de `dolarapi.com` (`/v1/dolares/cripto`, campo
-`compra`), que en la misma verificación quedó a ~0.2% de la tasa real in-app. Fallback a
-MEP si `dolarapi.com` no responde. Ver `fetchLiveRates()` en `lib/criptoya.ts`.
+un desvío de ~3% — Takenos opera con USDC internamente, no con el bono AL30 del MEP.
+Luego se probó el **dólar cripto** de `dolarapi.com` (`/v1/dolares/cripto`, campo
+`compra`), que quedó a ~0.2-0.4% de la tasa real in-app — mejor que el MEP, pero no
+exacto. Investigando el desvío se encontró que el `totalBid` de **TiendaCrypto**
+(USDT/ARS vía CriptoYa) calza **exacto, al centavo**, con la tasa real mostrada in-app
+por Takenos, en mediciones repetidas (sep-2026) — evidencia de que TiendaCrypto es su
+proveedor de liquidez. Esa es ahora la fuente primaria; fallback a dólar cripto de
+`dolarapi.com`, y de ahí a MEP. Ver `fetchLiveRates()` en `lib/criptoya.ts`.
 
 ---
 
@@ -89,12 +93,14 @@ Fuente: `https://criptoya.com` — CORS abierto, se llama directo desde el naveg
 | Dólar CCL (AL30 24hs) | `/api/dolar` | `ccl.al30["24hs"].price` |
 | Payoneer (estimado) | — | `CCL × 0.99` |
 | GrabrFi / Santander | — | `= MEP` |
+| Takenos | `/api/tiendacrypto/usdt/ars/1` | `totalBid` (calza exacto con la app real, ver arriba) |
 
-Fuente adicional: `https://dolarapi.com` — CORS abierto.
+Fuente adicional (fallback de Takenos si CriptoYa/TiendaCrypto no responde):
+`https://dolarapi.com` — CORS abierto.
 
 | Variable | Endpoint dolarapi.com | Campo |
 |---|---|---|
-| Dólar cripto (Takenos, estimado) | `/v1/dolares/cripto` | `compra`, con fallback a MEP |
+| Dólar cripto (fallback Takenos) | `/v1/dolares/cripto` | `compra`, con fallback final a MEP |
 
 Refresco automático: cada **5 minutos** + al volver a la pestaña (visibilitychange).
 

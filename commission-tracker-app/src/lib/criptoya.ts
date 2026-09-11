@@ -12,7 +12,7 @@ export interface LiveRates {
   payoneer: number | null;   // CCL * 0.99
   grabrfi: number | null;    // = MEP
   santander: number | null;  // = MEP
-  takenos: number | null;    // = dólar cripto (Takenos opera con USDC, no con bonos); fallback a MEP
+  takenos: number | null;    // TiendaCrypto USDT/ARS totalBid; fallback a dólar cripto, luego MEP
 }
 
 async function fetchJSON(url: string) {
@@ -22,21 +22,25 @@ async function fetchJSON(url: string) {
 }
 
 export async function fetchLiveRates(): Promise<LiveRates> {
-  const [dolar, astro, belo, binance, dolarCripto] = await Promise.all([
+  const [dolar, astro, belo, binance, dolarCripto, tiendacrypto] = await Promise.all([
     fetchJSON("https://criptoya.com/api/dolar"),
     fetchJSON("https://criptoya.com/api/astropay/usdt/ars/1"),
     fetchJSON("https://criptoya.com/api/belo/usdc/ars/1"),
     fetchJSON("https://criptoya.com/api/binancep2p/usdt/ars/1").catch(() => null),
     // dolarapi.com: sin auth, CORS abierto. Trae el "dólar cripto" (CCL calculado vía
-    // USDC/USDT), que es la referencia real de Takenos porque opera con stablecoins,
-    // no con el bono AL30 del MEP. Verificado contra la app de Takenos (sep-2026):
-    // el dólar cripto está a ~0.2% de la tasa real mostrada in-app, contra ~3% del MEP.
+    // USDC/USDT). Se usa solo como fallback de Takenos si TiendaCrypto no responde.
     fetchJSON("https://dolarapi.com/v1/dolares/cripto").catch(() => null),
+    // TiendaCrypto (vía CriptoYa, mismo dominio con CORS abierto que el resto de las
+    // llamadas): su totalBid de USDT/ARS calzó exacto (al centavo) con la tasa real
+    // mostrada in-app por Takenos en dos mediciones separadas (sep-2026), evidencia de
+    // que es el proveedor de liquidez detrás de la conversión USD→ARS de Takenos.
+    fetchJSON("https://criptoya.com/api/tiendacrypto/usdt/ars/1").catch(() => null),
   ]);
 
   const mep = dolar?.mep?.al30?.["24hs"]?.price ?? null;
   const ccl = dolar?.ccl?.al30?.["24hs"]?.price ?? null;
   const cripto = dolarCripto?.compra ?? null;
+  const tiendaCryptoRate = tiendacrypto?.totalBid ?? tiendacrypto?.bid ?? null;
 
   return {
     mep,
@@ -48,6 +52,6 @@ export async function fetchLiveRates(): Promise<LiveRates> {
     payoneer: ccl ? ccl * 0.99 : null,
     grabrfi: mep,
     santander: mep,
-    takenos: cripto ?? mep,
+    takenos: tiendaCryptoRate ?? cripto ?? mep,
   };
 }
