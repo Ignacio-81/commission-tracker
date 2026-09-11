@@ -15,7 +15,6 @@ const FEE_FIELDS: [keyof MarketConfig, string][] = [
   ["astropayReceiveFee", "AstroPay recepción (USD)"],
   ["beloAchInPct", "Belo ACH in %"],
   ["beloAchInMin", "Belo ACH in mín"],
-  ["beloUsdToUsdtSpread", "Belo spread USD→USDT % (Santander)"],
   ["payoneerAchIn", "Payoneer ACH in %"],
   ["payoneerAchOutFixed", "Payoneer retiro USD fijo"],
   ["payoneerAchOutSmall", "Payoneer retiro <umbral (USD)"],
