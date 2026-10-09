@@ -16,8 +16,7 @@ export default function Header({ lastRefresh, isLoading, onRefresh, rightSlot }:
           <Activity className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-xl font-extrabold gradient-text">CommissionTracker</h1>
-          <p className="text-xs text-muted-foreground">Mercury • Astropay • Belo</p>
+          <h1 className="text-xl font-extrabold gradient-text">Wallet Path Tracker</h1>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <span className="text-sm text-muted-foreground">

@@ -90,10 +90,10 @@ export default function Index() {
 
         <section className="pt-12 text-center">
           <h2 className="text-4xl font-extrabold tracking-tight sm:text-6xl">
-            Compara y <span className="gradient-text">ahorra</span> en tus transferencias
+            Wallet <span className="gradient-text">Path</span> Tracker
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-foreground/60">
-            Analiza las comisiones y tasas de cambio de Mercury, Astropay y Belo para encontrar la mejor ruta para tus dólares.
+            Compara y ahorra en tus movimientos
           </p>
         </section>
 
