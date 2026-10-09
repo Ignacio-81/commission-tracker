@@ -63,6 +63,9 @@ const DEFAULTS: MarketConfig = {
 const CFG_KEY = "marketConfig.v1";
 const MANUAL_KEY = "marketConfig.manualKeys.v1";
 const HISTORY_KEY = "history.v1";
+const HISTORY_MAX = 5000;
+// Monto fijo con el que se calcula el punto del histórico (tasa = ARS finales / monto).
+const SNAPSHOT_AMOUNT = 1000;
 
 const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
 const step = (
@@ -140,19 +143,19 @@ export function useCommissionData() {
   const snapshot = useCallback((cfg: MarketConfig, getResult: (a: number) => ComparisonResult) => {
     try {
       const h: HistoryPoint[] = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-      const r = getResult(3450);
+      const r = getResult(SNAPSHOT_AMOUNT);
       const best = [r.astropayPath, r.payoneerPath, r.grabrfiPath, r.santanderPath, r.binancePath, r.takenosPath]
         .reduce((m, x) => (x.finalAmountARS > m.finalAmountARS ? x : m));
       const lr = ratesRef.current;
       h.push({
         t: Date.now(),
-        rate: best.finalAmountARS / 1000,
+        rate: best.finalAmountARS / SNAPSHOT_AMOUNT,
         route: r.recommendation,
         belo: lr?.belo ?? cfg.beloUsdtToArs ?? null,
         binance: lr?.binance ?? null,
         mep: lr?.mep ?? null,
       });
-      if (h.length > 500) h.shift();
+      if (h.length > HISTORY_MAX) h.splice(0, h.length - HISTORY_MAX);
       localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
     } catch { /* noop */ }
   }, []);
@@ -289,13 +292,13 @@ export function useCommissionData() {
 
     const paths = [astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath, takenosPath];
     const best = paths.reduce((m, x) => (x.finalAmountARS > m.finalAmountARS ? x : m));
-    const worst = paths.reduce((m, x) => (x.finalAmountARS < m.finalAmountARS ? x : m));
-    const savings = best.finalAmountARS - worst.finalAmountARS;
+    // Ahorro de la mejor ruta vs. la referencia Mercury Wire → Santander → Dólar MEP (R4).
+    const savings = best.finalAmountARS - santanderPath.finalAmountARS;
 
     return {
       astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath, takenosPath,
       recommendation: best.id as ComparisonResult["recommendation"],
-      savings, savingsPercentage: (savings / best.finalAmountARS) * 100,
+      savings, savingsPercentage: (savings / santanderPath.finalAmountARS) * 100,
     };
   }, [commissions]);
 

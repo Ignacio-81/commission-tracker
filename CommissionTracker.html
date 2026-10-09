@@ -475,9 +475,9 @@ function calculateComparison(amount){
   const paths={astropay:r1,payoneer:r2,grabrfi:r3,santander:r4,binance:r5,takenos:r6};
   const arr=[r1,r2,r3,r4,r5,r6];
   const best=arr.reduce((m,x)=>x.finalAmountARS>m.finalAmountARS?x:m);
-  const worst=arr.reduce((m,x)=>x.finalAmountARS<m.finalAmountARS?x:m);
-  const savings=best.finalAmountARS-worst.finalAmountARS;
-  return {...paths,recommendation:best.id,best,savings,savingsPercentage:savings/best.finalAmountARS*100};
+  // Ahorro de la mejor ruta vs. la referencia Mercury Wire → Santander → Dólar MEP (R4)
+  const savings=best.finalAmountARS-r4.finalAmountARS;
+  return {...paths,recommendation:best.id,best,savings,savingsPercentage:savings/r4.finalAmountARS*100};
 }
 
 /* ---------- Formatting ---------- */
@@ -526,7 +526,7 @@ function renderCalc(){
   }).join('');
   document.getElementById('saveBanner').innerHTML=`
     <div class="save-banner">
-      <div><div class="muted" style="font-size:13px">Ahorro usando ${r.best.name.split('→').pop().trim()} (mejor ruta):</div>
+      <div><div class="muted" style="font-size:13px">Ahorro de ${r.best.name.split('→').pop().trim()} (mejor ruta) vs. Mercury Wire → Santander → Dólar MEP:</div>
       <div class="big">+${fmtARS(r.savings)} (${r.savingsPercentage.toFixed(2)}%)</div></div>
       <div style="font-size:26px">📈</div>
     </div>`;
@@ -632,7 +632,7 @@ function snapshot(){
     const h=JSON.parse(localStorage.getItem('history.v1')||'[]');
     const r=calculateComparison(1000);
     h.push({t:Date.now(),rate:r.best.finalAmountARS/1000,route:r.recommendation});
-    if(h.length>500)h.shift();
+    if(h.length>5000)h.splice(0,h.length-5000);
     localStorage.setItem('history.v1',JSON.stringify(h));
   }catch(e){}
 }

@@ -23,6 +23,14 @@ const SERIES: { key: keyof ChartRow; name: string; color: string }[] = [
   { key: "mep", name: "MEP", color: "hsl(217 91% 60%)" },
 ];
 
+// Versiones previas guardaban `rate` = ARS de 3450 USD / 1000 (3,45x inflado).
+// Se detecta por ser absurdamente mayor que la tasa MEP/Belo del mismo punto y se corrige al leer.
+const LEGACY_FACTOR = 3.45;
+function fixLegacyRate(p: HistoryPoint): HistoryPoint {
+  const ref = p.mep ?? p.belo ?? p.binance;
+  return ref && p.rate > ref * 2 ? { ...p, rate: p.rate / LEGACY_FACTOR } : p;
+}
+
 // Re-lee el histórico de localStorage. `tick` fuerza refresco cuando cambian las comisiones.
 export default function HistoryChart({ tick }: { tick: number }) {
   const [data, setData] = useState<ChartRow[]>([]);
@@ -31,7 +39,7 @@ export default function HistoryChart({ tick }: { tick: number }) {
     let h: HistoryPoint[] = [];
     try { h = JSON.parse(localStorage.getItem("history.v1") || "[]"); } catch { /* noop */ }
     setData(
-      h.map((p) => ({
+      h.map(fixLegacyRate).map((p) => ({
         label: new Date(p.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
         rate: round2(p.rate) ?? 0,
         belo: round2(p.belo),
