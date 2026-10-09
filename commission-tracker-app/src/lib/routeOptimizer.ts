@@ -89,17 +89,16 @@ const EDGES: EdgeDef[] = [
     },
   },
 
-  // GrabrFi → Belo (ACH out GrabrFi 0,3% mín/máx + recepción Belo 0,3% mín)
+  // GrabrFi → Belo (ACH out GrabrFi 0,5% mín $1/máx $10 + recepción Belo $3 fijos)
   {
     from: "grabrfi", to: "belo",
     apply: (amt, c) => {
       const grabrFee = clamp((amt * c.grabrfiAchOutPct) / 100, c.grabrfiAchOutMin, c.grabrfiAchOutMax);
       const afterGrabr = amt - grabrFee;
-      const beloFee = Math.max((afterGrabr * c.beloAchInPct) / 100, c.beloAchInMin);
-      const out = afterGrabr - beloFee;
+      const out = afterGrabr - c.beloAchInFixed;
       return { amount: out, steps: [
         { label: "GrabrFi → Belo (ACH out)", fee: `${pct(c.grabrfiAchOutPct)} (mín ${usd(c.grabrfiAchOutMin)}, máx ${usd(c.grabrfiAchOutMax)})`, amountOut: afterGrabr, unit: "USD" },
-        { label: "Recepción Belo", fee: `${pct(c.beloAchInPct)} (mín ${usd(c.beloAchInMin)})`, amountOut: out, unit: "USD" },
+        { label: "Recepción Belo (ACH)", fee: `${usd(c.beloAchInFixed)} fijos`, amountOut: out, unit: "USD" },
       ] };
     },
   },
@@ -110,31 +109,24 @@ const EDGES: EdgeDef[] = [
     apply: (amt, c) => {
       const pOut = amt < c.payoneerSmallThreshold ? c.payoneerAchOutSmall : c.payoneerAchOutFixed;
       const afterPayoneer = amt - pOut;
-      const beloFee = Math.max((afterPayoneer * c.beloAchInPct) / 100, c.beloAchInMin);
-      const out = afterPayoneer - beloFee;
+      const out = afterPayoneer - c.beloAchInFixed;
       return { amount: out, steps: [
         { label: "Retiro Payoneer → Belo", fee: `${usd(pOut)} fijo`, amountOut: afterPayoneer, unit: "USD" },
-        { label: "Recepción Belo", fee: `${pct(c.beloAchInPct)} (mín ${usd(c.beloAchInMin)})`, amountOut: out, unit: "USD" },
+        { label: "Recepción Belo (ACH)", fee: `${usd(c.beloAchInFixed)} fijos`, amountOut: out, unit: "USD" },
       ] };
     },
   },
 
-  // GrabrFi → USDT (ACH out GrabrFi + conversión USD→USDT)
+  // GrabrFi → USDT: el saldo USD se convierte a USDT automáticamente AL ENVIAR, sin comisión
+  // aparte ni ACH saliente; todo el costo está en el envío (0,5% + $1, aristas siguientes).
   {
     from: "grabrfi", to: "grabrfi_usdt",
-    apply: (amt, c) => {
-      const grabrFee = clamp((amt * c.grabrfiAchOutPct) / 100, c.grabrfiAchOutMin, c.grabrfiAchOutMax);
-      const afterGrabr = amt - grabrFee;
-      const convFee = (afterGrabr * c.grabrfiUsdToUsdtPct) / 100;
-      const out = afterGrabr - convFee;
-      return { amount: out, steps: [
-        { label: "GrabrFi ACH out", fee: `${pct(c.grabrfiAchOutPct)} (mín ${usd(c.grabrfiAchOutMin)}, máx ${usd(c.grabrfiAchOutMax)})`, amountOut: afterGrabr, unit: "USD" },
-        { label: "Conversión USD → USDT", fee: pct(c.grabrfiUsdToUsdtPct), amountOut: out, unit: "USDT" },
-      ] };
-    },
+    apply: (amt) => ({ amount: amt, steps: [
+      { label: "Conversión USD → USDT (automática al enviar)", fee: "sin costo aparte", amountOut: amt, unit: "USDT" },
+    ] }),
   },
 
-  // USDT → ARS vía AstroPay (retiro USDT 1,1%+$1 + recepción AstroPay + venta a tasa AstroPay)
+  // USDT → ARS vía AstroPay (envío USDT GrabrFi 0,5%+$1 + recepción AstroPay + venta a tasa AstroPay)
   {
     from: "grabrfi_usdt", to: "ars_astropay",
     apply: (amt, c) => {
@@ -144,14 +136,14 @@ const EDGES: EdgeDef[] = [
       if (!c.astropayUsdtToArs) return null;
       const out = afterRecv * c.astropayUsdtToArs;
       return { amount: out, steps: [
-        { label: "Retiro USDT (red)", fee: `${pct(c.grabrfiUsdtWithdrawPct)} + ${usd(c.grabrfiUsdtWithdrawFixed)}`, amountOut: afterWd, unit: "USDT" },
+        { label: "Envío USDT desde GrabrFi", fee: `${pct(c.grabrfiUsdtWithdrawPct)} + ${usd(c.grabrfiUsdtWithdrawFixed)}`, amountOut: afterWd, unit: "USDT" },
         { label: "Recepción AstroPay", fee: usd(c.astropayReceiveFee), amountOut: afterRecv, unit: "USDT" },
         { label: "Venta USDT → ARS (AstroPay)", fee: `× ${c.astropayUsdtToArs.toLocaleString("es-AR")}`, amountOut: out, unit: "ARS" },
       ] };
     },
   },
 
-  // USDT → ARS vía Binance P2P (retiro USDT 1,1%+$1 + venta P2P a tasa Binance)
+  // USDT → ARS vía Binance P2P (envío USDT GrabrFi 0,5%+$1 + venta P2P a tasa Binance)
   {
     from: "grabrfi_usdt", to: "ars_binance",
     apply: (amt, c) => {
@@ -160,7 +152,7 @@ const EDGES: EdgeDef[] = [
       if (!c.binanceUsdtToArs) return null;
       const out = afterWd * c.binanceUsdtToArs;
       return { amount: out, steps: [
-        { label: "Retiro USDT (red)", fee: `${pct(c.grabrfiUsdtWithdrawPct)} + ${usd(c.grabrfiUsdtWithdrawFixed)}`, amountOut: afterWd, unit: "USDT" },
+        { label: "Envío USDT desde GrabrFi", fee: `${pct(c.grabrfiUsdtWithdrawPct)} + ${usd(c.grabrfiUsdtWithdrawFixed)}`, amountOut: afterWd, unit: "USDT" },
         { label: "Venta USDT → ARS (Binance P2P)", fee: `× ${c.binanceUsdtToArs.toLocaleString("es-AR")}`, amountOut: out, unit: "ARS" },
       ] };
     },

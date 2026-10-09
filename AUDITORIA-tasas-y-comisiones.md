@@ -75,3 +75,33 @@ Las únicas comisiones sin fuente pública (**AstroPay** recepción/conversión 
 - Belo — [Your US dollar account (ACH & Wire) FAQs](https://help.belo.app/en/articles/9883300-your-us-dollar-account-ach-wire-faqs)
 - Payoneer — [Pricing](https://www.payoneer.com/about/pricing/) · [How Payoneer calculates withdrawal fees](https://www.payoneer.com/resources/how-to-use-payoneer/how-payoneer-calculates-withdrawal-fees/)
 - AstroPay — [Cuenta multimoneda](https://www.astropay.com/multicurrency-account) (tarifas en Anexo 1, in-app)
+
+---
+
+## Revisión de comisiones — 9-oct-2026 (Mercury, GrabrFi, Belo, Takenos)
+
+Contraste contra las páginas oficiales de cada proveedor (ACH y USDT, entrantes y salientes). Se
+corrigieron el modelo de cálculo, las etiquetas de las dos versiones, `verify-rates.mjs` y la documentación.
+
+| Proveedor | Concepto | Antes | Oficial hoy | Acción |
+|---|---|---|---|---|
+| Mercury | ACH in/out, wire USD intl | $0 / $15 (OUR) | $0 / $0 ó $15 si se pide OUR | Sin cambios |
+| GrabrFi | ACH saliente | 0,3% (mín $1, máx $5) | **0,5% (mín $1, máx $10)** | Corregido |
+| GrabrFi | USDT saliente | 1,1% + $1 | **0,5% + $1** | Corregido |
+| GrabrFi | Conversión USD→USDT | 0,8% aparte | **Sin costo aparte** (se convierte al enviar) | Eliminada del modelo y del panel |
+| GrabrFi | Wire entrante | $5 | $15 | Corregido (no se usa en rutas) |
+| Belo | ACH/FedNow entrante | 0,5% (mín $0,50), medido 5-ago | **$3 fijos** | Corregido; falta volver a medir |
+| Belo | Wire entrante | $20 | $20 | Sin cambios |
+| Belo | Máx. por transferencia de terceros | no modelado | US$ 4.000 | Aviso en las calculadoras |
+| Takenos | ACH in, retiro a CBU/CVU | 0% | Gratis / sin costo | Sin cambios |
+
+**Error de modelo corregido:** las rutas cripto (R1 AstroPay, R5 Binance P2P) cobraban además el ACH
+saliente de GrabrFi, pero esas rutas envían USDT y no hacen ningún ACH saliente.
+
+**Efecto (US$ 3.450, tasas del 9-oct-2026):** R3 GrabrFi→Belo +$14.700, R5 GrabrFi→Binance +$84.400 respecto
+del modelo anterior; R6 Takenos sin cambios. La ruta ganadora pasó de Takenos a GrabrFi→Belo.
+
+**Pendiente de validar con operaciones reales:** Belo $3 fijos (ver nota arriba) y el 0,5% + $1 de GrabrFi
+sobre el monto en USD. Fuentes: help.belo.app (recibir dólares desde EE. UU.; mínimos y comisiones cripto),
+help.grabrfi.com (full schedule of fees, vigente 3-sep-2026), mercury.com/pricing, help.takenos.com
+(cuánto cuesta recibir / enviar fondos).

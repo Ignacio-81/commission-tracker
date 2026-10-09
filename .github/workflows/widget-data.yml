@@ -7,7 +7,7 @@ name: Actualizar datos del widget
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # GitHub puede demorar o saltear algunas corridas
+    - cron: "3,18,33,48 * * * *"   # minutos poco usados: GitHub demora/saltea los crons de minutos redondos (*/10, */5)
   workflow_dispatch:
 
 permissions:

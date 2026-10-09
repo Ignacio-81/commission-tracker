@@ -45,10 +45,9 @@ Cualquier tasa o comisión es editable. Una clave editada manualmente:
 |---|---|---|
 | Banco en USD Wire internacional | $15 USD fijo | editable |
 | Banco en USD ACH out | $0 | editable |
-| GrabrFi ACH out | 0.3% (mín $1, máx $5) | docs oficiales |
-| GrabrFi USD→USDT | 0.8% | editable |
-| GrabrFi USDT withdraw | 1.1% + $1 | editable |
-| Belo ACH in | 0.3% (mín $0.50) | editable |
+| GrabrFi ACH out | 0.5% (mín $1, máx $10) | docs oficiales (3-sep-2026) |
+| GrabrFi envío USDT (incluye conversión USD→USDT) | 0.5% + $1 | docs oficiales (3-sep-2026), editable |
+| Belo ACH in | $3 fijos | docs oficiales (oct-2026), editable |
 | Belo spread local USD→USDT | 4% (**solo** ruta Santander) | editable |
 | Payoneer ACH in / out | 1% / 2% | docs oficiales |
 | AstroPay depósito | gratis | docs oficiales |

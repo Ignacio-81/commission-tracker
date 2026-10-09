@@ -13,7 +13,7 @@ function pct(w: WalletCommission, kind: "in" | "out") {
   const max = kind === "in" ? w.achIncomingMax : w.achOutgoingMax;
   if (fee === 0) return "Gratis";
   // tarifas porcentuales conocidas
-  if ((w.slug === "grabrfi" && kind === "out") || (w.slug === "belo" && kind === "in")) {
+  if (w.slug === "grabrfi" && kind === "out") {
     let s = `${fee}%`;
     if (min != null) s += ` (mín $${min}`;
     if (max != null) s += `, máx $${max}`;

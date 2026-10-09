@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { TrendingUp } from "lucide-react";
 import type { ComparisonResult, TransferPath, TransferStep } from "../types/commission";
 import { REFERENCE_AMOUNT_USD } from "../lib/settings";
+import { BELO_MAX_PER_TX_USD } from "../lib/marketConfig";
 import { fmtARS, fmtUSD, fmtNum } from "../lib/format";
 
 interface Props {
@@ -29,6 +30,11 @@ export default function ComparisonCalculator({ onCalculate }: Props) {
             className="w-full rounded-lg border border-border bg-input px-3.5 py-3 text-base outline-none focus:border-ring" />
         </div>
       </div>
+      {amount > BELO_MAX_PER_TX_USD && (
+        <p className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-3.5 py-2 text-sm text-warning">
+          ⚠ Belo: las transferencias de terceros tienen un máximo de US$ 4.000 por operación; montos mayores se revierten al remitente. Dividí el envío o usá otra ruta.
+        </p>
+      )}
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
         {paths.map((p) => {

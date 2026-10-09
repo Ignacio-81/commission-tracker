@@ -116,7 +116,7 @@ export default function Index() {
 
         <footer className="pt-8 text-center text-xs text-muted-foreground">
           Tasas FX en vivo vía CriptoYa (Belo USDC/ARS y AstroPay USDT/ARS = bid real; MEP/CCL = AL30 24hs). Las ediciones manuales del panel de Mercado tienen precedencia y se marcan "Manual".<br />
-          Comisiones verificadas con fuentes oficiales (jun-2026): Banco en USD, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: AstroPay (recepción/conversión) y GrabrFi USD→USDT — ajustables en el panel. Takenos: 0% en los tres pasos según la ficha del proveedor; la tasa se toma del bid de TiendaCrypto (USDT/ARS vía CriptoYa), su proveedor de liquidez, porque Takenos no publica una API de tasas propia.<br />
+          Comisiones verificadas con fuentes oficiales (oct-2026): Banco en USD, GrabrFi (tarifario del 3-sep-2026: ACH 0,5%, envío USDT 0,5% + $1, conversión incluida) y Belo (ACH entrante $3 fijos); Payoneer (jun-2026) ✓. Estimado sin tarifa pública: AstroPay (recepción) — ajustable en el panel. Takenos: 0% en los tres pasos según la ficha del proveedor; la tasa se toma del bid de TiendaCrypto (USDT/ARS vía CriptoYa), su proveedor de liquidez, porque Takenos no publica una API de tasas propia.<br />
           Herramienta informativa — no constituye asesoramiento financiero. Verificá comisiones antes de operar.
         </footer>
       </main>

@@ -222,6 +222,7 @@
       </div>
       <button class="btn btn-primary" onclick="renderCalc()">Calcular →</button>
     </div>
+    <div id="beloNote"></div>
     <div class="grid g6" id="calcCards"></div>
     <div id="saveBanner"></div>
   </section>
@@ -262,7 +263,7 @@
 
   <div class="footer">
     Tasas FX en vivo vía CriptoYa (Belo USDC/ARS, AstroPay USDT/ARS y Binance P2P USDT/ARS = bid real, ya neto de comisiones del exchange; MEP/CCL = AL30 24hs). Las ediciones manuales del panel de Mercado tienen precedencia y se marcan "Manual".<br/>
-    Comisiones verificadas con fuentes oficiales (ago-2026): Banco en USD, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: GrabrFi USD→USDT (ajustable en el panel) y el spread local USD→USDT de la ruta Santander. La conversión de AstroPay no se descuenta aparte porque ya viene incluida en el bid de CriptoYa. Takenos: 0% en los tres pasos según la ficha del proveedor; su tasa se toma del bid de TiendaCrypto (USDT/ARS vía CriptoYa), su proveedor de liquidez, porque no publica una API de tasas propia.<br/>
+    Comisiones verificadas con fuentes oficiales (oct-2026): Banco en USD, GrabrFi (tarifario del 3-sep-2026: ACH 0,5%, envío USDT 0,5% + $1, conversión incluida) y Belo (ACH entrante $3 fijos); Payoneer (jun-2026) ✓. La conversión de AstroPay no se descuenta aparte porque ya viene incluida en el bid de CriptoYa. Takenos: 0% en los tres pasos según la ficha del proveedor; su tasa se toma del bid de TiendaCrypto (USDT/ARS vía CriptoYa), su proveedor de liquidez, porque no publica una API de tasas propia.<br/>
     Herramienta informativa — no constituye asesoramiento financiero. Verificá comisiones antes de operar.
   </div>
 </div>
@@ -283,6 +284,7 @@
 // Monto de referencia (USD): único lugar. Debe coincidir con REFERENCE_AMOUNT_USD en
 // commission-tracker-app/src/lib/settings.ts (de ahí lo toma también el widget).
 const REFERENCE_AMOUNT_USD = 3450;
+const BELO_MAX_PER_TX_USD = 4000; // Belo: máximo por transferencia de terceros (ayuda oficial)
 const DEFAULTS = {
   // Las tasas NO tienen valor por defecto: se llenan en cada refresh desde la web.
   // null = no se pudo traer (la UI muestra error, sin valores de respaldo).
@@ -295,21 +297,23 @@ const DEFAULTS = {
   // Fallback: dólar cripto (dolarapi.com), luego MEP.
   takenosUsdToArs:null,
   mercuryAchOut:0, mercuryWireOut:15,
-  grabrfiAchOutPct:0.3, grabrfiAchOutMin:1, grabrfiAchOutMax:5,
-  grabrfiUsdToUsdtPct:0.8,
-  grabrfiUsdtWithdrawPct:1.1, grabrfiUsdtWithdrawFixed:1,
+  // GrabrFi — tarifario vigente desde el 3-sep-2026: ACH saliente 0,5% (mín $1, máx $10);
+  // USDT saliente 0,5% + $1. El saldo USD se convierte a USDT automáticamente al enviar:
+  // NO hay comisión de conversión aparte.
+  grabrfiAchOutPct:0.5, grabrfiAchOutMin:1, grabrfiAchOutMax:10,
+  grabrfiUsdtWithdrawPct:0.5, grabrfiUsdtWithdrawFixed:1,
   astropayReceiveFee:0,
-  // beloAchInPct MEDIDO 5-ago-2026: entraron 1300 USDC, descontó 6,50 → 0,500%
-  // (el tarifario público dice 0,3%; el valor medido tiene precedencia)
-  beloAchInPct:0.5, beloAchInMin:0.5,
+  // Belo — ACH/FedNow entrante: $3 fijos por transacción según la ayuda oficial (oct-2026).
+  // Antes se medía 0,5% (5-ago-2026); Belo cambió el tarifario. Wire entrante: $20.
+  beloAchInFixed:3,
   payoneerAchIn:1, payoneerAchOutFixed:1.5, payoneerAchOutSmall:4, payoneerSmallThreshold:400
 };
 const FEE_FIELDS=[
   ['mercuryAchOut','Banco en USD ACH out (USD)'],['mercuryWireOut','Banco en USD Wire intl (USD)'],
   ['grabrfiAchOutPct','GrabrFi ACH out %'],['grabrfiAchOutMin','GrabrFi ACH out mín'],['grabrfiAchOutMax','GrabrFi ACH out máx'],
-  ['grabrfiUsdToUsdtPct','GrabrFi USD→USDT %'],['grabrfiUsdtWithdrawPct','GrabrFi USDT withdraw %'],['grabrfiUsdtWithdrawFixed','GrabrFi USDT withdraw fijo'],
+  ['grabrfiUsdtWithdrawPct','GrabrFi envío USDT % (incluye conversión)'],['grabrfiUsdtWithdrawFixed','GrabrFi envío USDT fijo (USD)'],
   ['astropayReceiveFee','AstroPay recepción (USD)'],
-  ['beloAchInPct','Belo ACH in %'],['beloAchInMin','Belo ACH in mín'],
+  ['beloAchInFixed','Belo ACH in fijo (USD)'],
   ['payoneerAchIn','Payoneer ACH in %'],['payoneerAchOutFixed','Payoneer retiro USD fijo'],['payoneerAchOutSmall','Payoneer retiro <umbral (USD)'],['payoneerSmallThreshold','Payoneer umbral monto chico (USD)']
 ];
 
@@ -407,7 +411,7 @@ function wallets(){
     {name:'Payoneer',slug:'payoneer',tone:'--payoneer',achIn:config.payoneerAchIn,achInTxt:config.payoneerAchIn+'%',achOut:config.payoneerAchOutFixed,achOutTxt:'$'+config.payoneerAchOutFixed+' USD fijo',rate:rates.payoneer},
     {name:'GrabrFi',slug:'grabrfi',tone:'--grabrfi',achIn:0,achInTxt:'Gratis',achOut:config.grabrfiAchOutPct,achOutTxt:config.grabrfiAchOutPct+'% (mín $'+config.grabrfiAchOutMin+', máx $'+config.grabrfiAchOutMax+')',rate:rates.grabrfi},
     {name:'Astropay',slug:'astropay',tone:'--astropay',achIn:0,achInTxt:'Gratis',achOut:3.5,achOutTxt:'$3.5 USD',rate:config.astropayUsdtToArs},
-    {name:'Belo',slug:'belo',tone:'--belo',achIn:config.beloAchInPct,achInTxt:config.beloAchInPct+'% (mín $'+config.beloAchInMin+')',achOut:5,achOutTxt:'$5 USD',rate:config.beloUsdtToArs},
+    {name:'Belo',slug:'belo',tone:'--belo',achIn:config.beloAchInFixed,achInTxt:'$'+config.beloAchInFixed+' USD fijo',achOut:5,achOutTxt:'$5 USD',rate:config.beloUsdtToArs},
     {name:'Santander',slug:'santander',tone:'--santander',achIn:0,achInTxt:'Gratis',achOut:0,achOutTxt:'Gratis',rate:rates.santander},
     {name:'Takenos',slug:'takenos',tone:'--takenos',achIn:0,achInTxt:'Gratis',achOut:0,achOutTxt:'Gratis',rate:config.takenosUsdToArs}
   ];
@@ -420,31 +424,27 @@ function step(from,to,type,fee,feeType,amount,resultAmount){return {from,to,type
 function calculateComparison(amount){
   const c=config, beloRate=config.beloUsdtToArs, mercAch=c.mercuryAchOut;
   // R1 AstroPay (Crypto)
-  let a=amount-mercAch;
-  const ga=clamp(a*c.grabrfiAchOutPct/100,c.grabrfiAchOutMin,c.grabrfiAchOutMax); let b=a-ga;
-  const cv=b*c.grabrfiUsdToUsdtPct/100; let cc=b-cv;
-  const wd=cc*c.grabrfiUsdtWithdrawPct/100+c.grabrfiUsdtWithdrawFixed; let d=cc-wd-c.astropayReceiveFee;
+  // GrabrFi (tarifario 3-sep-2026): enviar USDT cuesta 0,5% + $1 sobre el monto en USD y ya incluye
+  // la conversión USD→USDT. No se cobra además el ACH saliente (no hay ACH: sale USDT).
+  const a=amount-mercAch;
+  const wd=a*c.grabrfiUsdtWithdrawPct/100+c.grabrfiUsdtWithdrawFixed; const d=a-wd-c.astropayReceiveFee;
   const toARS=(usd,rate)=>rate?usd*rate:null; // null = tasa en vivo no disponible
   const r1ARS=toARS(d,c.astropayUsdtToArs);
   const r1={id:'astropay',name:'Banco en USD → GrabrFi → USDT → AstroPay',finalAmountARS:r1ARS,missingRate:r1ARS==null?'AstroPay':null,
     transferMethod:'Banco en USD → GrabrFi: ACH  ·  GrabrFi → AstroPay: USDT (Tron/BSC)',
     steps:[
       step('Banco en USD','GrabrFi','ach',mercAch,'fixed',amount,a),
-      step('GrabrFi ACH out','GrabrFi','ach',c.grabrfiAchOutPct,'percentage',a,b),
-      step('GrabrFi USD','GrabrFi USDT','conversion',c.grabrfiUsdToUsdtPct,'percentage',b,cc),
-      step('GrabrFi retiro USDT (fee plataforma)','Red Cripto','conversion',wd,'fixed',cc,d),
+      step('GrabrFi envío USDT (0,5% + $1, incluye conversión)','Red Cripto','conversion',wd,'fixed',a,d),
       step('AstroPay (USDT)','AstroPay (ARS)','conversion',c.astropayReceiveFee,'fixed',d,r1ARS)
     ]};
   // R5 Binance P2P (misma adquisición de USDT que R1; venta P2P 0% al mejor precio)
-  const binUSDT=cc-wd;
+  const binUSDT=a-wd;
   const r5ARS=toARS(binUSDT,c.binanceUsdtToArs);
   const r5={id:'binance',name:'Banco en USD → GrabrFi → USDT → Binance P2P',finalAmountARS:r5ARS,missingRate:r5ARS==null?'Binance P2P':null,
     transferMethod:'Banco en USD → GrabrFi: ACH  ·  GrabrFi → Binance P2P: USDT (Tron/BSC)',
     steps:[
       step('Banco en USD','GrabrFi','ach',mercAch,'fixed',amount,a),
-      step('GrabrFi ACH out','GrabrFi','ach',c.grabrfiAchOutPct,'percentage',a,b),
-      step('GrabrFi USD','GrabrFi USDT','conversion',c.grabrfiUsdToUsdtPct,'percentage',b,cc),
-      step('GrabrFi retiro USDT (fee plataforma)','Binance (red)','conversion',wd,'fixed',cc,binUSDT),
+      step('GrabrFi envío USDT (0,5% + $1, incluye conversión)','Binance (red)','conversion',wd,'fixed',a,binUSDT),
       step('Binance P2P (USDT→ARS)','ARS','conversion',0,'fixed',binUSDT,r5ARS)
     ]};
   // R2 Payoneer → Belo
@@ -453,7 +453,7 @@ function calculateComparison(amount){
   // Retiro Payoneer USD→USD (a la cuenta US de Belo): fee FIJO desde mar-2025
   // $1.5 estándar (<$50k/mes); $4 si el monto es < umbral (~$400).
   const p2=(p<c.payoneerSmallThreshold)?c.payoneerAchOutSmall:c.payoneerAchOutFixed; p-=p2;
-  const pb=Math.max(p*c.beloAchInPct/100,c.beloAchInMin); p-=pb;
+  const pb=c.beloAchInFixed; p-=pb;
   const r2ARS=toARS(p,beloRate);
   const r2={id:'payoneer',name:'Banco en USD → Payoneer → Belo',finalAmountARS:r2ARS,missingRate:r2ARS==null?'Belo':null,
     transferMethod:'Banco en USD → Payoneer: ACH  ·  Payoneer → Belo: ACH',
@@ -461,20 +461,20 @@ function calculateComparison(amount){
       step('Banco en USD','Payoneer','ach',mercAch,'fixed',amount,amount-mercAch),
       step('Payoneer recepción','Payoneer','ach',c.payoneerAchIn,'percentage',amount-mercAch,amount-mercAch-p1),
       step('Payoneer retiro USD','Belo','ach',p2,'fixed',amount-mercAch-p1,amount-mercAch-p1-p2),
-      step('Belo recepción','Belo','ach',pb,'fixed',amount-mercAch-p1-p2,p),
+      step('Belo recepción (ACH, $3 fijos)','Belo','ach',pb,'fixed',amount-mercAch-p1-p2,p),
       step('Belo (USD)','Belo (ARS)','conversion',0,'fixed',p,r2ARS)
     ]};
   // R3 GrabrFi → Belo
   let g=amount-mercAch;
   const g1=clamp(g*c.grabrfiAchOutPct/100,c.grabrfiAchOutMin,c.grabrfiAchOutMax); g-=g1;
-  const g2=Math.max(g*c.beloAchInPct/100,c.beloAchInMin); g-=g2;
+  const g2=c.beloAchInFixed; g-=g2;
   const r3ARS=toARS(g,beloRate);
   const r3={id:'grabrfi',name:'Banco en USD → GrabrFi → Belo',finalAmountARS:r3ARS,missingRate:r3ARS==null?'Belo':null,
     transferMethod:'Banco en USD → GrabrFi: ACH  ·  GrabrFi → Belo: ACH',
     steps:[
       step('Banco en USD','GrabrFi','ach',mercAch,'fixed',amount,amount-mercAch),
       step('GrabrFi','Belo','ach',c.grabrfiAchOutPct,'percentage',amount-mercAch,amount-mercAch-g1),
-      step('Belo recepción','Belo','ach',g2,'fixed',amount-mercAch-g1,g),
+      step('Belo recepción (ACH, $3 fijos)','Belo','ach',g2,'fixed',amount-mercAch-g1,g),
       step('Belo (USD)','Belo (ARS)','conversion',0,'fixed',g,r3ARS)
     ]};
   // R4 Santander Wire → Dólar MEP (liquidación directa, sin pasar por Belo)
@@ -539,6 +539,8 @@ function stepLine(s){
 }
 function renderCalc(){
   const amt=parseFloat(document.getElementById('calcAmount').value)||0;
+  document.getElementById('beloNote').innerHTML=amt>BELO_MAX_PER_TX_USD
+    ?'<p class="muted" style="margin:0 0 14px;padding:8px 12px;border:1px solid hsl(var(--warning)/0.4);border-radius:8px;color:hsl(var(--warning));font-size:13px">⚠ Belo: las transferencias de terceros tienen un máximo de US$ 4.000 por operación; montos mayores se revierten al remitente. Dividí el envío o usá otra ruta.</p>':'';
   const r=calculateComparison(amt);
   const order=['astropay','payoneer','grabrfi','santander','binance','takenos'];
   document.getElementById('calcCards').innerHTML=order.map(id=>{

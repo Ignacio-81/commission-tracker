@@ -35,7 +35,7 @@ Cuando se haga un cambio de lógica (comisiones, rutas, fórmulas), **aplicarlo 
 | Slug | Rol en las rutas |
 |---|---|
 | `mercury` | Origen siempre — cuenta USD en EE.UU. desde donde salen los fondos |
-| `grabrfi` | Intermediario — recibe por ACH desde Mercury, convierte USD→USDT, envía a cripto |
+| `grabrfi` | Intermediario — recibe por ACH desde Mercury, envía USDT a cripto (la conversión USD→USDT es automática al enviar y no tiene costo aparte) |
 | `astropay` | Destino cripto — recibe USDT y permite retiro en ARS |
 | `belo` | Destino principal — recibe USD por ACH desde GrabrFi o Payoneer, convierte a ARS vía MEP |
 | `payoneer` | Intermediario alternativo — recibe de Mercury y reenvía a Belo |
@@ -112,18 +112,20 @@ Refresco automático: cada **5 minutos** + al volver a la pestaña (visibilitych
 
 ---
 
-## Comisiones hardcodeadas — estado de verificación (jun-2026)
+## Comisiones hardcodeadas — estado de verificación (oct-2026)
 
 | Wallet | Comisión | Estado |
 |---|---|---|
 | Mercury ACH out | $0 | ✅ Oficial |
 | Mercury Wire intl | $15 | ✅ Oficial (opción conservadora "OUR") |
-| GrabrFi ACH out | 0.3% (mín $1, máx $5) | ✅ Oficial |
-| GrabrFi USDT withdraw | 1.1% + $1 fijo | ✅ Oficial |
-| GrabrFi Wire in | $5 (US doméstico) | ✅ Oficial |
-| GrabrFi USD→USDT | 0.8% | ⚠️ Estimado (se muestra in-app antes de confirmar) |
-| Belo ACH in | **0.5%** (mín $0.50) | 🔬 **Medido** 5-ago-2026 — el tarifario público dice 0.3%, la operación real descontó 6,50 sobre 1300 USDC (0,500%). El valor medido tiene precedencia. |
+| GrabrFi ACH out | **0.5%** (mín $1, máx $10) | ✅ Oficial — tarifario vigente desde el **3-sep-2026** |
+| GrabrFi USDT envío | **0.5% + $1 fijo** | ✅ Oficial (3-sep-2026). **Incluye** la conversión USD→USDT; es el único costo de las rutas R1/R5 en GrabrFi |
+| GrabrFi ACH/USDT entrante | $0 / gratis | ✅ Oficial |
+| GrabrFi Wire in | $15 (US doméstico) | ✅ Oficial (no se usa en ninguna ruta) |
+| Belo ACH/FedNow in | **$3 fijos** por transacción | ✅ Oficial — ayuda de Belo, oct-2026. Antes se medía 0.5% (5-ago-2026); Belo cambió el tarifario. Conviene volver a medir con la próxima operación. |
 | Belo Wire in | $20 | ✅ Oficial |
+| Belo máx. por transferencia de terceros | US$ 4.000 | ✅ Oficial — la calculadora avisa si el monto lo supera (no recalcula rutas) |
+| Belo USDT entrante / saliente | gratis / tarifa de red (~1 USDT en Tron) | ✅ Oficial — no se usa en ninguna ruta |
 | Payoneer ACH in | 1% | ✅ Oficial |
 | Payoneer retiro USD (≥$400) | $1.50 fijo | ✅ Oficial (desde mar-2025) |
 | Payoneer retiro USD (<$400) | $4.00 fijo | ✅ Oficial (desde mar-2025) |
@@ -132,6 +134,8 @@ Refresco automático: cada **5 minutos** + al volver a la pestaña (visibilitych
 | AstroPay ACH out | $3.50 | ℹ️ Solo informativo — **no se usa en el cálculo** |
 | Takenos ACH in | 0% | ✅ Oficial (ficha del proveedor) |
 | Takenos retiro CBU/CVU | 0% | ✅ Oficial (ficha del proveedor) |
+| Takenos USDT envío / ACH saliente | 1% / 1% (3% usuarios argentinos) | ✅ Oficial — no se usa en ninguna ruta |
+| Takenos Wire in | $25 | ✅ Oficial — no se usa en ninguna ruta |
 
 **Qué es editable y qué no.** Son ajustables en el panel ⚙️ Mercado únicamente los campos
 listados en `FEE_FIELDS` (`MarketConfigPanel.tsx`). `astropayConversion` (2.5%) y

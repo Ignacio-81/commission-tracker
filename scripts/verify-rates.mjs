@@ -36,15 +36,14 @@ const ROI_NOISE_PCT = 1.5;     // por debajo de este margen, el ROI del puré es
 const EXPECTED_FEES = {
   mercuryAchOut: 0,
   mercuryWireOut: 15,
-  grabrfiAchOutPct: 0.3,
+  // GrabrFi: tarifario vigente desde el 3-sep-2026 (conversión USD→USDT incluida en el envío)
+  grabrfiAchOutPct: 0.5,
   grabrfiAchOutMin: 1,
-  grabrfiAchOutMax: 5,
-  grabrfiUsdToUsdtPct: 0.8,
-  grabrfiUsdtWithdrawPct: 1.1,
+  grabrfiAchOutMax: 10,
+  grabrfiUsdtWithdrawPct: 0.5,
   grabrfiUsdtWithdrawFixed: 1,
   astropayReceiveFee: 0,
-  beloAchInPct: 0.5, // medido 5-ago-2026 (6,50 sobre 1300); el tarifario público dice 0,3%
-  beloAchInMin: 0.5,
+  beloAchInFixed: 3, // ayuda oficial de Belo (oct-2026): $3 fijos por ACH/FedNow entrante
   payoneerAchIn: 1,
   payoneerAchOutFixed: 1.5,
   payoneerAchOutSmall: 4,
@@ -61,12 +60,10 @@ const FEE_STATUS = {
   grabrfiAchOutPct: "official",
   grabrfiAchOutMin: "official",
   grabrfiAchOutMax: "official",
-  grabrfiUsdToUsdtPct: "estimated",
   grabrfiUsdtWithdrawPct: "official",
   grabrfiUsdtWithdrawFixed: "official",
   astropayReceiveFee: "estimated",
-  beloAchInPct: "measured",
-  beloAchInMin: "official",
+  beloAchInFixed: "official",
   payoneerAchIn: "official",
   payoneerAchOutFixed: "official",
   payoneerAchOutSmall: "official",
@@ -98,24 +95,23 @@ const ENDPOINTS = [
 const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
 
 function computeRoutes(amount, c, rates) {
+  // Enviar USDT desde GrabrFi: 0,5% + $1, con la conversión incluida y sin ACH saliente.
   const a = amount - c.mercuryAchOut;
-  const b = a - clamp((a * c.grabrfiAchOutPct) / 100, c.grabrfiAchOutMin, c.grabrfiAchOutMax);
-  const cc = b - (b * c.grabrfiUsdToUsdtPct) / 100;
-  const wd = (cc * c.grabrfiUsdtWithdrawPct) / 100 + c.grabrfiUsdtWithdrawFixed;
-  const d = cc - wd - c.astropayReceiveFee;
+  const wd = (a * c.grabrfiUsdtWithdrawPct) / 100 + c.grabrfiUsdtWithdrawFixed;
+  const d = a - wd - c.astropayReceiveFee;
 
   const R1 = d * rates.astropay;
-  const R5 = (cc - wd) * rates.binance;
+  const R5 = (a - wd) * rates.binance;
 
   let p = amount - c.mercuryAchOut;
   p -= (p * c.payoneerAchIn) / 100;
   p -= p < c.payoneerSmallThreshold ? c.payoneerAchOutSmall : c.payoneerAchOutFixed;
-  p -= Math.max((p * c.beloAchInPct) / 100, c.beloAchInMin);
+  p -= c.beloAchInFixed;
   const R2 = p * rates.belo;
 
   let g = amount - c.mercuryAchOut;
   g -= clamp((g * c.grabrfiAchOutPct) / 100, c.grabrfiAchOutMin, c.grabrfiAchOutMax);
-  g -= Math.max((g * c.beloAchInPct) / 100, c.beloAchInMin);
+  g -= c.beloAchInFixed;
   const R3 = g * rates.belo;
 
   // Liquida directo a Dólar MEP en Santander, sin pasar por Belo (ni spread adicional).

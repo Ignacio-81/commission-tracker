@@ -1,4 +1,4 @@
-// Config de mercado compartida por la app web (React) y el Worker del widget.
+// Config de mercado compartida por la app web (React) y el generador del widget (widget-data/).
 // Sin dependencias de React ni del navegador.
 import type { LiveRates } from "./criptoya";
 
@@ -14,12 +14,10 @@ export interface MarketConfig {
   grabrfiAchOutPct: number;
   grabrfiAchOutMin: number;
   grabrfiAchOutMax: number;
-  grabrfiUsdToUsdtPct: number;
   grabrfiUsdtWithdrawPct: number;
   grabrfiUsdtWithdrawFixed: number;
   astropayReceiveFee: number;
-  beloAchInPct: number;
-  beloAchInMin: number;
+  beloAchInFixed: number;
   payoneerAchIn: number;
   payoneerAchOutFixed: number;
   payoneerAchOutSmall: number;
@@ -43,22 +41,27 @@ export const DEFAULTS: MarketConfig = {
   takenosUsdToArs: null,
   mercuryAchOut: 0,
   mercuryWireOut: 15,
-  grabrfiAchOutPct: 0.3,
+  // GrabrFi — tarifario vigente desde el 3-sep-2026 (help.grabrfi.com/en/content/full-schedule-of-fees):
+  // ACH saliente 0,5% (mín $1, máx $10); USDT saliente 0,5% + $1. El saldo USD se convierte a
+  // USDT automáticamente al enviar: NO hay una comisión de conversión aparte.
+  grabrfiAchOutPct: 0.5,
   grabrfiAchOutMin: 1,
-  grabrfiAchOutMax: 5,
-  grabrfiUsdToUsdtPct: 0.8,
-  grabrfiUsdtWithdrawPct: 1.1,
+  grabrfiAchOutMax: 10,
+  grabrfiUsdtWithdrawPct: 0.5,
   grabrfiUsdtWithdrawFixed: 1,
   astropayReceiveFee: 0,
-  // MEDIDO 5-ago-2026 sobre una operación real: entraron 1300 USDC, descontó 6,50 → 0,500%.
-  // El tarifario público de Belo dice 0,3%; el valor medido tiene precedencia.
-  beloAchInPct: 0.5,
-  beloAchInMin: 0.5,
+  // Belo — ACH/FedNow entrante: $3 fijos por transacción según la ayuda oficial (oct-2026).
+  // Antes se medía 0,5% (5-ago-2026: 6,50 sobre 1300 USDC); Belo cambió el tarifario.
+  // Wire entrante: $20. Se acredita solo lo que supera la comisión.
+  beloAchInFixed: 3,
   payoneerAchIn: 1,
   payoneerAchOutFixed: 1.5,
   payoneerAchOutSmall: 4,
   payoneerSmallThreshold: 400,
 };
+
+/** Belo: máximo por transferencia de terceros (ayuda oficial). Montos mayores se revierten al remitente. */
+export const BELO_MAX_PER_TX_USD = 4000;
 
 export function withoutRates(cfg: MarketConfig): MarketConfig {
   const next = { ...cfg };

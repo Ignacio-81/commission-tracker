@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { AlertCircle, Trophy, ArrowRight, TrendingUp } from "lucide-react";
 import { useCommissionData } from "../hooks/useCommissionData";
 import { REFERENCE_AMOUNT_USD } from "../lib/settings";
+import { BELO_MAX_PER_TX_USD } from "../lib/marketConfig";
 import { fmtARS, fmtNum } from "../lib/format";
 import { optimizeRoutes, type RouteResult, type Unit } from "../lib/routeOptimizer";
 import Header from "../components/Header";
@@ -82,6 +83,12 @@ export default function IndexV2() {
             />
           </div>
         </section>
+
+        {amount > BELO_MAX_PER_TX_USD && (
+          <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+            ⚠ Belo: las transferencias de terceros tienen un máximo de US$ 4.000 por operación; montos mayores se revierten al remitente. Dividí el envío o usá otra ruta.
+          </div>
+        )}
 
         {amount > 0 && routes.length === 0 && (
           <div className="flex items-center gap-3 rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-destructive">
@@ -170,7 +177,7 @@ export default function IndexV2() {
 
         <footer className="pt-8 text-center text-xs text-muted-foreground">
           Optimizador de grafo: enumera todas las combinaciones (origen Banco en USD; salida vía GrabrFi o Payoneer)
-          y elige la de mayor ARS final. Comisiones y tasas idénticas a la v1 (auditadas, jun-2026); ajustables en el panel ⚙️ Mercado.<br />
+          y elige la de mayor ARS final. Comisiones y tasas idénticas a la v1 (auditadas con fuentes oficiales, oct-2026); ajustables en el panel ⚙️ Mercado.<br />
           Herramienta informativa — no constituye asesoramiento financiero. Verificá comisiones antes de operar.
         </footer>
       </main>
