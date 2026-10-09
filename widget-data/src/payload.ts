@@ -74,7 +74,7 @@ export async function buildPayload(amount = DEFAULT_AMOUNT) {
       rows,
       status: failed.length ? `⚠ ${failed.length} ${failed.length === 1 ? "fuente sin datos" : "fuentes sin datos"}` : "",
       hasError: failed.length > 0,
-      hasErrorNum: failed.length > 0 ? 1 : 0, // 1/0 para fórmulas de KWGT
+      hasErrorNum: failed.length > 0 ? 1 : 0, // 1/0, lo lee el widget Android
       updatedTime,
       // Texto de la esquina superior derecha: aviso en rojo si falta una fuente.
       header: failed.length ? `⚠ ${failed.length} ${failed.length === 1 ? "fuente sin datos" : "fuentes sin datos"} · ${updatedTime}` : `Act. ${updatedTime}`,
