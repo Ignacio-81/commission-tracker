@@ -15,7 +15,8 @@ export interface LiveRates {
   takenos: number | null;    // TiendaCrypto USDT/ARS totalBid; fallback a dólar cripto, luego MEP
 }
 
-async function fetchJSON(url: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchJSON(url: string): Promise<any> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`${url} -> ${r.status}`);
   return r.json();

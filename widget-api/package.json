@@ -1,0 +1,17 @@
+{
+  "name": "commission-tracker-widget-api",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Endpoint JSON para el widget de Android: top 3 de tasas USD->ARS y mejor ruta (optimizador v2)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250101.0",
+    "typescript": "^5.5.3",
+    "wrangler": "^3.100.0"
+  }
+}

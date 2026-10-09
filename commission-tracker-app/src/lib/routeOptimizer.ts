@@ -14,7 +14,7 @@
 // solo agregar un nodo + arista: los caminos nuevos aparecen solos.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { MarketConfig } from "../hooks/useCommissionData";
+import type { MarketConfig } from "./marketConfig";
 
 const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
 

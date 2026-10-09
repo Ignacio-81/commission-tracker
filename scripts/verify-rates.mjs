@@ -10,7 +10,7 @@
  *
  * Qué hace:
  *   1. Verifica que cada endpoint de CriptoYa responda y que el campo que parsea la app exista.
- *   2. Verifica que las comisiones hardcodeadas en useCommissionData.ts y CommissionTracker.html
+ *   2. Verifica que las comisiones hardcodeadas en lib/marketConfig.ts y CommissionTracker.html
  *      coincidan con los valores esperados de esta tabla (fuente: auditoría oficial).
  *   3. Corre las 5 rutas en varios montos y chequea invariantes (sin NaN, sin negativos, etc).
  *   4. Chequea que las tasas sean PLAUSIBLES ENTRE SÍ (ver checkPlausibility).
@@ -315,7 +315,7 @@ function checkPlausibility(rates, table, issues) {
 const issues = [];
 const { rates, sources } = await fetchRates(issues);
 checkSource("CommissionTracker.html", "HTML", issues);
-checkSource("commission-tracker-app/src/hooks/useCommissionData.ts", "React", issues);
+checkSource("commission-tracker-app/src/lib/marketConfig.ts", "React", issues);
 const table = checkRoutes(rates, issues);
 checkPlausibility(rates, table, issues);
 
