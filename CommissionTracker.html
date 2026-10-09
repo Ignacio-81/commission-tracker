@@ -313,9 +313,13 @@ const FEE_FIELDS=[
 const RATE_KEYS=['astropayUsdToArs','astropayUsdtToArs','beloUsdtToArs','binanceUsdtToArs','takenosUsdToArs'];
 let config={}, manualKeys=[];
 function loadConfig(){
-  try{config={...DEFAULTS,...JSON.parse(localStorage.getItem('marketConfig.v1')||'{}')}}catch(e){config={...DEFAULTS}}
-  RATE_KEYS.forEach(k=>config[k]=null); // tasas guardadas = valores viejos: se descartan
   try{manualKeys=JSON.parse(localStorage.getItem('marketConfig.manualKeys.v1')||'[]')}catch(e){manualKeys=[]}
+  // De lo guardado solo se toman las comisiones editadas a mano; el resto sale de DEFAULTS
+  // (así una comisión corregida en el código no queda tapada por un valor viejo guardado).
+  config={...DEFAULTS};
+  try{const saved=JSON.parse(localStorage.getItem('marketConfig.v1')||'{}');
+    manualKeys.forEach(k=>{if(k in DEFAULTS&&typeof saved[k]==='number')config[k]=saved[k];});}catch(e){}
+  RATE_KEYS.forEach(k=>config[k]=null); // tasas guardadas = valores viejos: se descartan
 }
 function saveConfig(){
   localStorage.setItem('marketConfig.v1',JSON.stringify(config));

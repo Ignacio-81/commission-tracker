@@ -35,8 +35,17 @@ export interface HistoryPoint {
 }
 
 // Las tasas guardadas en localStorage se descartan al cargar: serían valores viejos.
+// De lo guardado solo se toman las comisiones editadas a mano: el resto sale siempre de DEFAULTS,
+// así una comisión corregida en el código (p. ej. Belo 0,3% → 0,5%) no queda tapada por un valor viejo.
 function loadConfig(): MarketConfig {
-  try { return withoutRates({ ...DEFAULTS, ...JSON.parse(localStorage.getItem(CFG_KEY) || "{}") }); }
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || "{}");
+    const cfg: MarketConfig = { ...DEFAULTS };
+    for (const k of loadManual()) {
+      if (k in DEFAULTS && typeof saved[k] === "number") (cfg as unknown as Record<string, number>)[k] = saved[k];
+    }
+    return withoutRates(cfg);
+  }
   catch { return { ...DEFAULTS }; }
 }
 
