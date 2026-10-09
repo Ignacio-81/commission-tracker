@@ -130,7 +130,7 @@ export function useCommissionData() {
   const buildCommissions = (cfg: MarketConfig, rates: Awaited<ReturnType<typeof fetchLiveRates>> | null): WalletCommission[] => {
     const now = new Date();
     return [
-      { name: "Mercury", slug: "mercury", achIncoming: 0, achOutgoing: cfg.mercuryAchOut, wireIncoming: 0, wireOutgoing: cfg.mercuryWireOut, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, lastUpdated: now, feeSource: "official-documentation" },
+      { name: "Banco en USD", slug: "mercury", achIncoming: 0, achOutgoing: cfg.mercuryAchOut, wireIncoming: 0, wireOutgoing: cfg.mercuryWireOut, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, lastUpdated: now, feeSource: "official-documentation" },
       { name: "Payoneer", slug: "payoneer", achIncoming: cfg.payoneerAchIn, achOutgoing: cfg.payoneerAchOutFixed, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: rates?.payoneer ?? undefined, lastUpdated: now, rateSource: "CCL x 0.99 (estimado)", feeSource: "official-documentation" },
       { name: "GrabrFi", slug: "grabrfi", achIncoming: 0, achOutgoing: cfg.grabrfiAchOutPct, achOutgoingMin: cfg.grabrfiAchOutMin, achOutgoingMax: cfg.grabrfiAchOutMax, wireIncoming: 5, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: rates?.grabrfi ?? undefined, lastUpdated: now, rateSource: "Dolar MEP", feeSource: "official-documentation" },
       { name: "Astropay", slug: "astropay", achIncoming: cfg.astropayReceiveFee, achOutgoing: 3.5, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 2.5, monthlyFee: 0, usdToArsRate: cfg.astropayUsdtToArs, lastUpdated: now, rateSource: "CriptoYa", rateIsManual: manRef.current.includes("astropayUsdtToArs") },
@@ -184,11 +184,11 @@ export function useCommissionData() {
     const d = cc - wd - c.astropayReceiveFee;
     const r1ARS = d * c.astropayUsdtToArs;
     const astropayPath: TransferPath = {
-      id: "astropay", name: "Mercury → GrabrFi → USDT → AstroPay", finalAmountARS: r1ARS,
+      id: "astropay", name: "Banco en USD → GrabrFi → USDT → AstroPay", finalAmountARS: r1ARS,
       effectiveRate: r1ARS / amountUSD, totalFees: amountUSD - d,
-      transferMethod: "Mercury → GrabrFi: ACH  ·  GrabrFi → AstroPay: USDT (Tron/BSC)",
+      transferMethod: "Banco en USD → GrabrFi: ACH  ·  GrabrFi → AstroPay: USDT (Tron/BSC)",
       steps: [
-        step("Mercury", "GrabrFi", "ach", c.mercuryAchOut, "fixed", amountUSD, a),
+        step("Banco en USD", "GrabrFi", "ach", c.mercuryAchOut, "fixed", amountUSD, a),
         step("GrabrFi ACH out", "GrabrFi", "ach", c.grabrfiAchOutPct, "percentage", a, b),
         step("GrabrFi USD", "GrabrFi USDT", "conversion", c.grabrfiUsdToUsdtPct, "percentage", b, cc),
         step("GrabrFi retiro USDT (fee plataforma)", "Red Cripto", "conversion", wd, "fixed", cc, d),
@@ -200,11 +200,11 @@ export function useCommissionData() {
     const binanceUSDT = cc - wd;
     const r5ARS = binanceUSDT * c.binanceUsdtToArs;
     const binancePath: TransferPath = {
-      id: "binance", name: "Mercury → GrabrFi → USDT → Binance P2P", finalAmountARS: r5ARS,
+      id: "binance", name: "Banco en USD → GrabrFi → USDT → Binance P2P", finalAmountARS: r5ARS,
       effectiveRate: r5ARS / amountUSD, totalFees: amountUSD - binanceUSDT,
-      transferMethod: "Mercury → GrabrFi: ACH  ·  GrabrFi → Binance P2P: USDT (Tron/BSC)",
+      transferMethod: "Banco en USD → GrabrFi: ACH  ·  GrabrFi → Binance P2P: USDT (Tron/BSC)",
       steps: [
-        step("Mercury", "GrabrFi", "ach", c.mercuryAchOut, "fixed", amountUSD, a),
+        step("Banco en USD", "GrabrFi", "ach", c.mercuryAchOut, "fixed", amountUSD, a),
         step("GrabrFi ACH out", "GrabrFi", "ach", c.grabrfiAchOutPct, "percentage", a, b),
         step("GrabrFi USD", "GrabrFi USDT", "conversion", c.grabrfiUsdToUsdtPct, "percentage", b, cc),
         step("GrabrFi retiro USDT (fee plataforma)", "Binance (red)", "conversion", wd, "fixed", cc, binanceUSDT),
@@ -225,11 +225,11 @@ export function useCommissionData() {
     p -= Math.max((p * c.beloAchInPct) / 100, c.beloAchInMin);
     const r2ARS = p * (belo.usdToArsRate ?? beloRate);
     const payoneerPath: TransferPath = {
-      id: "payoneer", name: "Mercury → Payoneer → Belo", finalAmountARS: r2ARS,
+      id: "payoneer", name: "Banco en USD → Payoneer → Belo", finalAmountARS: r2ARS,
       effectiveRate: r2ARS / amountUSD, totalFees: amountUSD - p,
-      transferMethod: "Mercury → Payoneer: ACH  ·  Payoneer → Belo: ACH",
+      transferMethod: "Banco en USD → Payoneer: ACH  ·  Payoneer → Belo: ACH",
       steps: [
-        step("Mercury", "Payoneer", "ach", mercury.achOutgoing, "fixed", amountUSD, pAfterMercury),
+        step("Banco en USD", "Payoneer", "ach", mercury.achOutgoing, "fixed", amountUSD, pAfterMercury),
         step("Payoneer recepción", "Payoneer", "ach", payoneer.achIncoming, "percentage", pAfterMercury, pAfterPayoneerRecv),
         step("Payoneer retiro USD", "Belo", "ach", pOut, "fixed", pAfterPayoneerRecv, pAfterPayoneerRetiro),
         step("Belo recepción", "Belo", "ach", c.beloAchInPct, "percentage", pAfterPayoneerRetiro, p),
@@ -245,11 +245,11 @@ export function useCommissionData() {
     g -= Math.max((g * c.beloAchInPct) / 100, c.beloAchInMin);
     const r3ARS = g * (belo.usdToArsRate ?? beloRate);
     const grabrfiPath: TransferPath = {
-      id: "grabrfi", name: "Mercury → GrabrFi → Belo", finalAmountARS: r3ARS,
+      id: "grabrfi", name: "Banco en USD → GrabrFi → Belo", finalAmountARS: r3ARS,
       effectiveRate: r3ARS / amountUSD, totalFees: amountUSD - g,
-      transferMethod: "Mercury → GrabrFi: ACH  ·  GrabrFi → Belo: ACH",
+      transferMethod: "Banco en USD → GrabrFi: ACH  ·  GrabrFi → Belo: ACH",
       steps: [
-        step("Mercury", "GrabrFi", "ach", mercury.achOutgoing, "fixed", amountUSD, gAfterMercury),
+        step("Banco en USD", "GrabrFi", "ach", mercury.achOutgoing, "fixed", amountUSD, gAfterMercury),
         step("GrabrFi", "Belo", "ach", grabrfi.achOutgoing, "percentage", gAfterMercury, gAfterGrabrfi),
         step("Belo recepción", "Belo", "ach", c.beloAchInPct, "percentage", gAfterGrabrfi, g),
         step("Belo (USD)", "Belo (ARS)", "conversion", 0, "fixed", g, r3ARS),
@@ -265,11 +265,11 @@ export function useCommissionData() {
     const s = amountUSD - c.mercuryWireOut;
     const r4ARS = s * (santander.usdToArsRate ?? c.beloUsdtToArs);
     const santanderPath: TransferPath = {
-      id: "santander", name: "Mercury Wire → Santander → Dólar MEP", finalAmountARS: r4ARS,
+      id: "santander", name: "Banco en USD Wire → Santander → Dólar MEP", finalAmountARS: r4ARS,
       effectiveRate: r4ARS / amountUSD, totalFees: amountUSD - s,
-      transferMethod: "Mercury → Santander: Wire  ·  Santander → ARS: Dólar MEP",
+      transferMethod: "Banco en USD → Santander: Wire  ·  Santander → ARS: Dólar MEP",
       steps: [
-        step("Mercury", "Santander", "wire", c.mercuryWireOut, "fixed", amountUSD, s),
+        step("Banco en USD", "Santander", "wire", c.mercuryWireOut, "fixed", amountUSD, s),
         step("Santander recepción Wire", "Santander", "wire", 0, "fixed", s, s),
         step("Santander (USD)", "ARS (Dólar MEP)", "conversion", 0, "fixed", s, r4ARS),
       ],
@@ -280,11 +280,11 @@ export function useCommissionData() {
     const tk = amountUSD - c.mercuryAchOut;
     const r6ARS = tk * (takenos.usdToArsRate ?? c.takenosUsdToArs);
     const takenosPath: TransferPath = {
-      id: "takenos", name: "Mercury → Takenos → CBU/CVU", finalAmountARS: r6ARS,
+      id: "takenos", name: "Banco en USD → Takenos → CBU/CVU", finalAmountARS: r6ARS,
       effectiveRate: r6ARS / amountUSD, totalFees: amountUSD - tk,
-      transferMethod: "Mercury → Takenos: ACH  ·  Takenos → CBU/CVU: transferencia local",
+      transferMethod: "Banco en USD → Takenos: ACH  ·  Takenos → CBU/CVU: transferencia local",
       steps: [
-        step("Mercury", "Takenos", "ach", c.mercuryAchOut, "fixed", amountUSD, tk),
+        step("Banco en USD", "Takenos", "ach", c.mercuryAchOut, "fixed", amountUSD, tk),
         step("Takenos recepción (ACH)", "Takenos", "ach", 0, "percentage", tk, tk),
         step("Takenos (USD)", "CBU/CVU (ARS)", "conversion", 0, "fixed", tk, r6ARS),
       ],
@@ -292,7 +292,7 @@ export function useCommissionData() {
 
     const paths = [astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath, takenosPath];
     const best = paths.reduce((m, x) => (x.finalAmountARS > m.finalAmountARS ? x : m));
-    // Ahorro de la mejor ruta vs. la referencia Mercury Wire → Santander → Dólar MEP (R4).
+    // Ahorro de la mejor ruta vs. la referencia Banco en USD Wire → Santander → Dólar MEP (R4).
     const savings = best.finalAmountARS - santanderPath.finalAmountARS;
 
     return {

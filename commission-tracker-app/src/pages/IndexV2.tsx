@@ -8,8 +8,8 @@ import MarketConfigPanel from "../components/MarketConfigPanel";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // v2 — Optimizador de rutas
-// Dado un monto en USD en Mercury, calcula TODAS las combinaciones de billeteras
-// posibles (origen siempre Mercury; salida solo por GrabrFi o Payoneer; resto
+// Dado un monto en USD en Banco en USD, calcula TODAS las combinaciones de billeteras
+// posibles (origen siempre Banco en USD; salida solo por GrabrFi o Payoneer; resto
 // libre) y muestra la que deja el mayor monto final en ARS.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ export default function IndexV2() {
             La <span className="gradient-text">mejor combinación</span> para tus dólares
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-foreground/60">
-            Ingresá el monto en USD en Mercury y el optimizador calcula todas las rutas posibles
+            Ingresá el monto en USD en Banco en USD y el optimizador calcula todas las rutas posibles
             para devolverte la que maximiza tus pesos.
           </p>
         </section>
@@ -68,7 +68,7 @@ export default function IndexV2() {
         {/* Input de monto */}
         <section className="glass-card rounded-2xl p-6">
           <label className="block text-sm font-semibold text-muted-foreground">
-            Monto a transferir (USD desde Mercury)
+            Monto a transferir (USD desde Banco en USD)
           </label>
           <div className="mt-2 flex items-center gap-2">
             <span className="text-2xl font-bold text-muted-foreground">$</span>
@@ -162,7 +162,7 @@ export default function IndexV2() {
         )}
 
         <footer className="pt-8 text-center text-xs text-muted-foreground">
-          Optimizador de grafo: enumera todas las combinaciones (origen Mercury; salida vía GrabrFi o Payoneer)
+          Optimizador de grafo: enumera todas las combinaciones (origen Banco en USD; salida vía GrabrFi o Payoneer)
           y elige la de mayor ARS final. Comisiones y tasas idénticas a la v1 (auditadas, jun-2026); ajustables en el panel ⚙️ Mercado.<br />
           Herramienta informativa — no constituye asesoramiento financiero. Verificá comisiones antes de operar.
         </footer>

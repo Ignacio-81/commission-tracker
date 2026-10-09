@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="CommissionTracker" />
-<meta name="description" content="Compará rutas USD→ARS (Mercury, GrabrFi, AstroPay, Belo) y calculá el ROI del puré MEP en vivo." />
+<meta name="description" content="Compará rutas USD→ARS (Banco en USD, GrabrFi, AstroPay, Belo) y calculá el ROI del puré MEP en vivo." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232dd4bf'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%230a0f1d'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E" />
 <title>Wallet Path Tracker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -262,7 +262,7 @@
 
   <div class="footer">
     Tasas FX en vivo vía CriptoYa (Belo USDC/ARS, AstroPay USDT/ARS y Binance P2P USDT/ARS = bid real, ya neto de comisiones del exchange; MEP/CCL = AL30 24hs). Las ediciones manuales del panel de Mercado tienen precedencia y se marcan "Manual".<br/>
-    Comisiones verificadas con fuentes oficiales (ago-2026): Mercury, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: GrabrFi USD→USDT (ajustable en el panel) y el spread local USD→USDT de la ruta Santander. La conversión de AstroPay no se descuenta aparte porque ya viene incluida en el bid de CriptoYa. Takenos: 0% en los tres pasos según la ficha del proveedor; su tasa se toma del bid de TiendaCrypto (USDT/ARS vía CriptoYa), su proveedor de liquidez, porque no publica una API de tasas propia.<br/>
+    Comisiones verificadas con fuentes oficiales (ago-2026): Banco en USD, GrabrFi, Belo y Payoneer ✓. Estimados sin tarifa pública: GrabrFi USD→USDT (ajustable en el panel) y el spread local USD→USDT de la ruta Santander. La conversión de AstroPay no se descuenta aparte porque ya viene incluida en el bid de CriptoYa. Takenos: 0% en los tres pasos según la ficha del proveedor; su tasa se toma del bid de TiendaCrypto (USDT/ARS vía CriptoYa), su proveedor de liquidez, porque no publica una API de tasas propia.<br/>
     Herramienta informativa — no constituye asesoramiento financiero. Verificá comisiones antes de operar.
   </div>
 </div>
@@ -300,7 +300,7 @@ const DEFAULTS = {
   payoneerAchIn:1, payoneerAchOutFixed:1.5, payoneerAchOutSmall:4, payoneerSmallThreshold:400
 };
 const FEE_FIELDS=[
-  ['mercuryAchOut','Mercury ACH out (USD)'],['mercuryWireOut','Mercury Wire intl (USD)'],
+  ['mercuryAchOut','Banco en USD ACH out (USD)'],['mercuryWireOut','Banco en USD Wire intl (USD)'],
   ['grabrfiAchOutPct','GrabrFi ACH out %'],['grabrfiAchOutMin','GrabrFi ACH out mín'],['grabrfiAchOutMax','GrabrFi ACH out máx'],
   ['grabrfiUsdToUsdtPct','GrabrFi USD→USDT %'],['grabrfiUsdtWithdrawPct','GrabrFi USDT withdraw %'],['grabrfiUsdtWithdrawFixed','GrabrFi USDT withdraw fijo'],
   ['astropayReceiveFee','AstroPay recepción (USD)'],
@@ -376,7 +376,7 @@ async function refreshData(){
 /* ---------- Wallets ---------- */
 function wallets(){
   return [
-    {name:'Mercury',slug:'mercury',tone:'--mercury',achIn:0,achInTxt:'Gratis',achOut:config.mercuryAchOut,achOutTxt:config.mercuryAchOut?('$'+config.mercuryAchOut):'Gratis',rate:null},
+    {name:'Banco en USD',slug:'mercury',tone:'--mercury',achIn:0,achInTxt:'Gratis',achOut:config.mercuryAchOut,achOutTxt:config.mercuryAchOut?('$'+config.mercuryAchOut):'Gratis',rate:null},
     {name:'Payoneer',slug:'payoneer',tone:'--payoneer',achIn:config.payoneerAchIn,achInTxt:config.payoneerAchIn+'%',achOut:config.payoneerAchOutFixed,achOutTxt:'$'+config.payoneerAchOutFixed+' USD fijo',rate:rates.payoneer},
     {name:'GrabrFi',slug:'grabrfi',tone:'--grabrfi',achIn:0,achInTxt:'Gratis',achOut:config.grabrfiAchOutPct,achOutTxt:config.grabrfiAchOutPct+'% (mín $'+config.grabrfiAchOutMin+', máx $'+config.grabrfiAchOutMax+')',rate:rates.grabrfi},
     {name:'Astropay',slug:'astropay',tone:'--astropay',achIn:0,achInTxt:'Gratis',achOut:3.5,achOutTxt:'$3.5 USD',rate:config.astropayUsdtToArs},
@@ -398,10 +398,10 @@ function calculateComparison(amount){
   const cv=b*c.grabrfiUsdToUsdtPct/100; let cc=b-cv;
   const wd=cc*c.grabrfiUsdtWithdrawPct/100+c.grabrfiUsdtWithdrawFixed; let d=cc-wd-c.astropayReceiveFee;
   const r1ARS=d*c.astropayUsdtToArs;
-  const r1={id:'astropay',name:'Mercury → GrabrFi → USDT → AstroPay',finalAmountARS:r1ARS,
-    transferMethod:'Mercury → GrabrFi: ACH  ·  GrabrFi → AstroPay: USDT (Tron/BSC)',
+  const r1={id:'astropay',name:'Banco en USD → GrabrFi → USDT → AstroPay',finalAmountARS:r1ARS,
+    transferMethod:'Banco en USD → GrabrFi: ACH  ·  GrabrFi → AstroPay: USDT (Tron/BSC)',
     steps:[
-      step('Mercury','GrabrFi','ach',mercAch,'fixed',amount,a),
+      step('Banco en USD','GrabrFi','ach',mercAch,'fixed',amount,a),
       step('GrabrFi ACH out','GrabrFi','ach',c.grabrfiAchOutPct,'percentage',a,b),
       step('GrabrFi USD','GrabrFi USDT','conversion',c.grabrfiUsdToUsdtPct,'percentage',b,cc),
       step('GrabrFi retiro USDT (fee plataforma)','Red Cripto','conversion',wd,'fixed',cc,d),
@@ -410,10 +410,10 @@ function calculateComparison(amount){
   // R5 Binance P2P (misma adquisición de USDT que R1; venta P2P 0% al mejor precio)
   const binUSDT=cc-wd;
   const r5ARS=binUSDT*c.binanceUsdtToArs;
-  const r5={id:'binance',name:'Mercury → GrabrFi → USDT → Binance P2P',finalAmountARS:r5ARS,
-    transferMethod:'Mercury → GrabrFi: ACH  ·  GrabrFi → Binance P2P: USDT (Tron/BSC)',
+  const r5={id:'binance',name:'Banco en USD → GrabrFi → USDT → Binance P2P',finalAmountARS:r5ARS,
+    transferMethod:'Banco en USD → GrabrFi: ACH  ·  GrabrFi → Binance P2P: USDT (Tron/BSC)',
     steps:[
-      step('Mercury','GrabrFi','ach',mercAch,'fixed',amount,a),
+      step('Banco en USD','GrabrFi','ach',mercAch,'fixed',amount,a),
       step('GrabrFi ACH out','GrabrFi','ach',c.grabrfiAchOutPct,'percentage',a,b),
       step('GrabrFi USD','GrabrFi USDT','conversion',c.grabrfiUsdToUsdtPct,'percentage',b,cc),
       step('GrabrFi retiro USDT (fee plataforma)','Binance (red)','conversion',wd,'fixed',cc,binUSDT),
@@ -427,10 +427,10 @@ function calculateComparison(amount){
   const p2=(p<c.payoneerSmallThreshold)?c.payoneerAchOutSmall:c.payoneerAchOutFixed; p-=p2;
   const pb=Math.max(p*c.beloAchInPct/100,c.beloAchInMin); p-=pb;
   const r2ARS=p*beloRate;
-  const r2={id:'payoneer',name:'Mercury → Payoneer → Belo',finalAmountARS:r2ARS,
-    transferMethod:'Mercury → Payoneer: ACH  ·  Payoneer → Belo: ACH',
+  const r2={id:'payoneer',name:'Banco en USD → Payoneer → Belo',finalAmountARS:r2ARS,
+    transferMethod:'Banco en USD → Payoneer: ACH  ·  Payoneer → Belo: ACH',
     steps:[
-      step('Mercury','Payoneer','ach',mercAch,'fixed',amount,amount-mercAch),
+      step('Banco en USD','Payoneer','ach',mercAch,'fixed',amount,amount-mercAch),
       step('Payoneer recepción','Payoneer','ach',c.payoneerAchIn,'percentage',amount-mercAch,amount-mercAch-p1),
       step('Payoneer retiro USD','Belo','ach',p2,'fixed',amount-mercAch-p1,amount-mercAch-p1-p2),
       step('Belo recepción','Belo','ach',pb,'fixed',amount-mercAch-p1-p2,p),
@@ -441,10 +441,10 @@ function calculateComparison(amount){
   const g1=clamp(g*c.grabrfiAchOutPct/100,c.grabrfiAchOutMin,c.grabrfiAchOutMax); g-=g1;
   const g2=Math.max(g*c.beloAchInPct/100,c.beloAchInMin); g-=g2;
   const r3ARS=g*beloRate;
-  const r3={id:'grabrfi',name:'Mercury → GrabrFi → Belo',finalAmountARS:r3ARS,
-    transferMethod:'Mercury → GrabrFi: ACH  ·  GrabrFi → Belo: ACH',
+  const r3={id:'grabrfi',name:'Banco en USD → GrabrFi → Belo',finalAmountARS:r3ARS,
+    transferMethod:'Banco en USD → GrabrFi: ACH  ·  GrabrFi → Belo: ACH',
     steps:[
-      step('Mercury','GrabrFi','ach',mercAch,'fixed',amount,amount-mercAch),
+      step('Banco en USD','GrabrFi','ach',mercAch,'fixed',amount,amount-mercAch),
       step('GrabrFi','Belo','ach',c.grabrfiAchOutPct,'percentage',amount-mercAch,amount-mercAch-g1),
       step('Belo recepción','Belo','ach',g2,'fixed',amount-mercAch-g1,g),
       step('Belo (USD)','Belo (ARS)','conversion',0,'fixed',g,r3ARS)
@@ -454,27 +454,27 @@ function calculateComparison(amount){
   // spread adicional que modelar acá — mismo criterio que R1/R5 con el totalBid de CriptoYa.
   const s=amount-c.mercuryWireOut;
   const r4ARS=s*(rates.santander||beloRate);
-  const r4={id:'santander',name:'Mercury Wire → Santander → Dólar MEP',finalAmountARS:r4ARS,
-    transferMethod:'Mercury → Santander: Wire  ·  Santander → ARS: Dólar MEP',
+  const r4={id:'santander',name:'Banco en USD Wire → Santander → Dólar MEP',finalAmountARS:r4ARS,
+    transferMethod:'Banco en USD → Santander: Wire  ·  Santander → ARS: Dólar MEP',
     steps:[
-      step('Mercury','Santander','wire',c.mercuryWireOut,'fixed',amount,s),
+      step('Banco en USD','Santander','wire',c.mercuryWireOut,'fixed',amount,s),
       step('Santander recepción Wire','Santander','wire',0,'fixed',s,s),
       step('Santander (USD)','ARS (Dólar MEP)','conversion',0,'fixed',s,r4ARS)
     ]};
   // R6 Takenos (ACH directo; 0% en todos los pasos según la ficha del proveedor)
   const tk=amount-mercAch;
   const r6ARS=tk*c.takenosUsdToArs;
-  const r6={id:'takenos',name:'Mercury → Takenos → CBU/CVU',finalAmountARS:r6ARS,
-    transferMethod:'Mercury → Takenos: ACH  ·  Takenos → CBU/CVU: transferencia local',
+  const r6={id:'takenos',name:'Banco en USD → Takenos → CBU/CVU',finalAmountARS:r6ARS,
+    transferMethod:'Banco en USD → Takenos: ACH  ·  Takenos → CBU/CVU: transferencia local',
     steps:[
-      step('Mercury','Takenos','ach',mercAch,'fixed',amount,tk),
+      step('Banco en USD','Takenos','ach',mercAch,'fixed',amount,tk),
       step('Takenos recepción (ACH)','Takenos','ach',0,'percentage',tk,tk),
       step('Takenos (USD)','CBU/CVU (ARS)','conversion',0,'fixed',tk,r6ARS)
     ]};
   const paths={astropay:r1,payoneer:r2,grabrfi:r3,santander:r4,binance:r5,takenos:r6};
   const arr=[r1,r2,r3,r4,r5,r6];
   const best=arr.reduce((m,x)=>x.finalAmountARS>m.finalAmountARS?x:m);
-  // Ahorro de la mejor ruta vs. la referencia Mercury Wire → Santander → Dólar MEP (R4)
+  // Ahorro de la mejor ruta vs. la referencia Banco en USD Wire → Santander → Dólar MEP (R4)
   const savings=best.finalAmountARS-r4.finalAmountARS;
   return {...paths,recommendation:best.id,best,savings,savingsPercentage:savings/r4.finalAmountARS*100};
 }
@@ -525,7 +525,7 @@ function renderCalc(){
   }).join('');
   document.getElementById('saveBanner').innerHTML=`
     <div class="save-banner">
-      <div><div class="muted" style="font-size:13px">Ahorro de ${r.best.name.split('→').pop().trim()} (mejor ruta) vs. Mercury Wire → Santander → Dólar MEP:</div>
+      <div><div class="muted" style="font-size:13px">Ahorro de ${r.best.name.split('→').pop().trim()} (mejor ruta) vs. Banco en USD Wire → Santander → Dólar MEP:</div>
       <div class="big">+${fmtARS(r.savings)} (${r.savingsPercentage.toFixed(2)}%)</div></div>
       <div style="font-size:26px">📈</div>
     </div>`;
@@ -560,7 +560,7 @@ function renderArb(){
   document.getElementById('arbMep').textContent='$'+fmtRate(mep)+' ARS';
   document.getElementById('arbSteps').innerHTML=`
     <div class="arb-step"><span>1. Capital Inicial:</span><span class="v">${fmtUSD(amt)}</span></div>
-    <div class="arb-step"><span>2. Conversión Máxima a Pesos:<br/><span class="muted" style="font-size:12px">vía ${r.best.name.replace('Mercury → ','').replace('Mercury Wire → ','')}</span></span><span class="v">${fmtARS(r.best.finalAmountARS)}</span></div>
+    <div class="arb-step"><span>2. Conversión Máxima a Pesos:<br/><span class="muted" style="font-size:12px">vía ${r.best.name.replace('Banco en USD → ','').replace('Banco en USD Wire → ','')}</span></span><span class="v">${fmtARS(r.best.finalAmountARS)}</span></div>
     <div class="arb-step"><span>3. Retorno en Dólar MEP:</span><span class="v">${fmtUSD(finalUSD)}</span></div>`;
   document.getElementById('arbResult').innerHTML=`
     <div class="arb-res ${pos?'pos':'neg'}">

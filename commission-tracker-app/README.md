@@ -1,15 +1,15 @@
 # CommissionTracker
 
-Dashboard fintech (dark, teal/cyan) que compara 4 rutas para mover USD desde **Mercury** a **ARS**, más una calculadora de arbitraje **Dólar MEP** ("puré / bucle").
+Dashboard fintech (dark, teal/cyan) que compara 4 rutas para mover USD desde **Banco en USD** a **ARS**, más una calculadora de arbitraje **Dólar MEP** ("puré / bucle").
 
 ## Rutas
 
 | # | Ruta | Detalle |
 |---|------|---------|
-| R1 | Mercury ACH → GrabrFi → USDT (Tron/BSC) → AstroPay → ARS | vía cripto |
-| R2 | Mercury ACH → Payoneer → Belo → ARS | |
-| R3 | Mercury ACH → GrabrFi → Belo → ARS | suele ser la mejor |
-| R4 | Mercury Wire → Santander (USD local) → Belo (spread 4% USD→USDT) → ARS | **sin** paso USDT→ARS |
+| R1 | Banco en USD ACH → GrabrFi → USDT (Tron/BSC) → AstroPay → ARS | vía cripto |
+| R2 | Banco en USD ACH → Payoneer → Belo → ARS | |
+| R3 | Banco en USD ACH → GrabrFi → Belo → ARS | suele ser la mejor |
+| R4 | Banco en USD Wire → Santander (USD local) → Belo (spread 4% USD→USDT) → ARS | **sin** paso USDT→ARS |
 
 ## Stack
 
@@ -43,8 +43,8 @@ Cualquier tasa o comisión es editable. Una clave editada manualmente:
 
 | Regla | Valor | Fuente |
 |---|---|---|
-| Mercury Wire internacional | $15 USD fijo | editable |
-| Mercury ACH out | $0 | editable |
+| Banco en USD Wire internacional | $15 USD fijo | editable |
+| Banco en USD ACH out | $0 | editable |
 | GrabrFi ACH out | 0.3% (mín $1, máx $5) | docs oficiales |
 | GrabrFi USD→USDT | 0.8% | editable |
 | GrabrFi USDT withdraw | 1.1% + $1 | editable |

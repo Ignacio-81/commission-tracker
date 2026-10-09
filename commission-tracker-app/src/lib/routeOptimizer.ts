@@ -6,7 +6,7 @@
 // MAYOR monto final en ARS para un monto de entrada dado.
 //
 // Restricción de negocio (jun-2026, actualizado sep-2026 con Takenos): el origen
-// es siempre Mercury y la salida desde Mercury es vía GrabrFi, Payoneer o Takenos
+// es siempre Banco en USD y la salida desde Banco en USD es vía GrabrFi, Payoneer o Takenos
 // (este último ya liquida directo en ARS). Después, el camino es libre.
 //
 // La aritmética de cada arista replica EXACTAMENTE la de useCommissionData.ts
@@ -29,7 +29,7 @@ export interface RouteStep {
 
 export interface RouteResult {
   id: string;            // identificador estable del camino
-  name: string;          // "Mercury → GrabrFi → Belo → ARS (Belo/MEP)"
+  name: string;          // "Banco en USD → GrabrFi → Belo → ARS (Belo/MEP)"
   finalARS: number;      // monto final en pesos
   effectiveRate: number; // ARS por cada USD de entrada
   steps: RouteStep[];    // desglose paso a paso
@@ -39,7 +39,7 @@ export interface RouteResult {
 interface NodeDef { id: string; label: string; unit: Unit; terminal?: boolean; }
 
 const NODES: Record<string, NodeDef> = {
-  mercury:       { id: "mercury",       label: "Mercury",            unit: "USD" },
+  mercury:       { id: "mercury",       label: "Banco en USD",            unit: "USD" },
   grabrfi:       { id: "grabrfi",       label: "GrabrFi",            unit: "USD" },
   payoneer:      { id: "payoneer",      label: "Payoneer",           unit: "USD" },
   belo:          { id: "belo",          label: "Belo",               unit: "USD" },
@@ -63,18 +63,18 @@ const pct = (n: number) => `${n.toLocaleString("es-AR", { maximumFractionDigits:
 const usd = (n: number) => `$${n.toLocaleString("es-AR", { maximumFractionDigits: 2 })}`;
 
 const EDGES: EdgeDef[] = [
-  // Mercury → GrabrFi (ACH out de Mercury, normalmente $0)
+  // Banco en USD → GrabrFi (ACH out de Banco en USD, normalmente $0)
   {
     from: "mercury", to: "grabrfi",
     apply: (amt, c) => {
       const out = amt - c.mercuryAchOut;
       return { amount: out, steps: [
-        { label: "Mercury → GrabrFi (ACH)", fee: usd(c.mercuryAchOut), amountOut: out, unit: "USD" },
+        { label: "Banco en USD → GrabrFi (ACH)", fee: usd(c.mercuryAchOut), amountOut: out, unit: "USD" },
       ] };
     },
   },
 
-  // Mercury → Payoneer (ACH out de Mercury + recepción Payoneer %)
+  // Banco en USD → Payoneer (ACH out de Banco en USD + recepción Payoneer %)
   {
     from: "mercury", to: "payoneer",
     apply: (amt, c) => {
@@ -82,7 +82,7 @@ const EDGES: EdgeDef[] = [
       const recFee = (afterMercury * c.payoneerAchIn) / 100;
       const out = afterMercury - recFee;
       return { amount: out, steps: [
-        { label: "Mercury → Payoneer (ACH)", fee: usd(c.mercuryAchOut), amountOut: afterMercury, unit: "USD" },
+        { label: "Banco en USD → Payoneer (ACH)", fee: usd(c.mercuryAchOut), amountOut: afterMercury, unit: "USD" },
         { label: "Recepción Payoneer", fee: pct(c.payoneerAchIn), amountOut: out, unit: "USD" },
       ] };
     },
@@ -174,14 +174,14 @@ const EDGES: EdgeDef[] = [
     },
   },
 
-  // Mercury → Takenos (ACH directo; 0% en recepción y retiro a CBU/CVU)
+  // Banco en USD → Takenos (ACH directo; 0% en recepción y retiro a CBU/CVU)
   {
     from: "mercury", to: "ars_takenos",
     apply: (amt, c) => {
       const afterMercury = amt - c.mercuryAchOut;
       const out = afterMercury * c.takenosUsdToArs;
       return { amount: out, steps: [
-        { label: "Mercury → Takenos (ACH)", fee: usd(c.mercuryAchOut), amountOut: afterMercury, unit: "USD" },
+        { label: "Banco en USD → Takenos (ACH)", fee: usd(c.mercuryAchOut), amountOut: afterMercury, unit: "USD" },
         { label: "Takenos: recepción + retiro CBU/CVU", fee: "0% (Gratis)", amountOut: out, unit: "ARS" },
       ] };
     },
@@ -190,7 +190,7 @@ const EDGES: EdgeDef[] = [
 
 const START = "mercury";
 
-// Enumera todos los caminos simples desde Mercury hasta cualquier nodo terminal (ARS).
+// Enumera todos los caminos simples desde Banco en USD hasta cualquier nodo terminal (ARS).
 function enumeratePaths(): EdgeDef[][] {
   const paths: EdgeDef[][] = [];
   const dfs = (nodeId: string, trail: EdgeDef[], visited: Set<string>) => {

@@ -69,7 +69,7 @@ export default function ComparisonCalculator({ onCalculate }: Props) {
 
       <div className="mt-5 flex items-center justify-between rounded-xl border border-success/40 bg-success/10 px-6 py-4">
         <div>
-          <div className="text-sm text-muted-foreground">Ahorro de la mejor ruta vs. Mercury Wire → Santander → Dólar MEP:</div>
+          <div className="text-sm text-muted-foreground">Ahorro de la mejor ruta vs. Banco en USD Wire → Santander → Dólar MEP:</div>
           <div className="text-2xl font-extrabold text-success">
             +{fmtARS(result.savings)} ({result.savingsPercentage.toFixed(2)}%)
           </div>

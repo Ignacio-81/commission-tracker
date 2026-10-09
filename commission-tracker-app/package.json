@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Dashboard fintech: compara rutas USD (Mercury) -> ARS y calcula arbitraje MEP",
+  "description": "Dashboard fintech: compara rutas USD (Banco en USD) -> ARS y calcula arbitraje MEP",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

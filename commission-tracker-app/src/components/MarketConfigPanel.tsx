@@ -4,8 +4,8 @@ import { Settings2, RotateCcw, X } from "lucide-react";
 import type { MarketConfig } from "../hooks/useCommissionData";
 
 const FEE_FIELDS: [keyof MarketConfig, string][] = [
-  ["mercuryAchOut", "Mercury ACH out (USD)"],
-  ["mercuryWireOut", "Mercury Wire intl (USD)"],
+  ["mercuryAchOut", "Banco en USD ACH out (USD)"],
+  ["mercuryWireOut", "Banco en USD Wire intl (USD)"],
   ["grabrfiAchOutPct", "GrabrFi ACH out %"],
   ["grabrfiAchOutMin", "GrabrFi ACH out mín"],
   ["grabrfiAchOutMax", "GrabrFi ACH out máx"],
