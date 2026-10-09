@@ -281,14 +281,16 @@
 <script>
 /* ---------- Config ---------- */
 const DEFAULTS = {
-  astropayUsdToArs:1474, astropayUsdtToArs:1475,
-  beloUsdtToArs:1470,
-  binanceUsdtToArs:1500,
+  // Las tasas NO tienen valor por defecto: se llenan en cada refresh desde la web.
+  // null = no se pudo traer (la UI muestra error, sin valores de respaldo).
+  astropayUsdToArs:null, astropayUsdtToArs:null,
+  beloUsdtToArs:null,
+  binanceUsdtToArs:null,
   // Takenos no publica una API/tasa propia: se usa el totalBid de TiendaCrypto (USDT/ARS
   // vía CriptoYa), que calzó exacto con la tasa real mostrada in-app por Takenos en
   // mediciones separadas (sep-2026) — evidencia de que es su proveedor de liquidez.
   // Fallback: dólar cripto (dolarapi.com), luego MEP.
-  takenosUsdToArs:1470,
+  takenosUsdToArs:null,
   mercuryAchOut:0, mercuryWireOut:15,
   grabrfiAchOutPct:0.3, grabrfiAchOutMin:1, grabrfiAchOutMax:5,
   grabrfiUsdToUsdtPct:0.8,
@@ -308,9 +310,11 @@ const FEE_FIELDS=[
   ['payoneerAchIn','Payoneer ACH in %'],['payoneerAchOutFixed','Payoneer retiro USD fijo'],['payoneerAchOutSmall','Payoneer retiro <umbral (USD)'],['payoneerSmallThreshold','Payoneer umbral monto chico (USD)']
 ];
 
+const RATE_KEYS=['astropayUsdToArs','astropayUsdtToArs','beloUsdtToArs','binanceUsdtToArs','takenosUsdToArs'];
 let config={}, manualKeys=[];
 function loadConfig(){
   try{config={...DEFAULTS,...JSON.parse(localStorage.getItem('marketConfig.v1')||'{}')}}catch(e){config={...DEFAULTS}}
+  RATE_KEYS.forEach(k=>config[k]=null); // tasas guardadas = valores viejos: se descartan
   try{manualKeys=JSON.parse(localStorage.getItem('marketConfig.manualKeys.v1')||'[]')}catch(e){manualKeys=[]}
 }
 function saveConfig(){
@@ -322,20 +326,39 @@ function setConfigKey(k,v){
   saveConfig(); renderAll();
 }
 function resetConfig(){config={...DEFAULTS};manualKeys=[];saveConfig();refreshData();}
+// Vuelca las tasas en vivo al config (respeta las manuales). Fuente caída = null (error).
+function applyLiveRates(){
+  const live={astropayUsdtToArs:rates.astropay,astropayUsdToArs:rates.astropay,beloUsdtToArs:rates.belo,
+    binanceUsdtToArs:rates.binance,takenosUsdToArs:rates.takenos};
+  RATE_KEYS.forEach(k=>{if(!manualKeys.includes(k))config[k]=live[k]??null;});
+}
+function missingRates(){
+  const m=[];
+  if(config.astropayUsdtToArs==null)m.push('AstroPay');
+  if(config.beloUsdtToArs==null)m.push('Belo');
+  if(config.binanceUsdtToArs==null)m.push('Binance P2P');
+  if(config.takenosUsdToArs==null)m.push('Takenos');
+  if(rates.mep==null)m.push('Dólar MEP (Santander)');
+  return m;
+}
 
 /* ---------- Live rates ---------- */
 let rates={belo:null,astropay:null,binance:null,mep:null,ccl:null,cripto:null,payoneer:null,grabrfi:null,santander:null,takenos:null};
 let lastRefresh=null, isLoading=false;
 
 async function fetchJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(u);return r.json();}
+function showErr(msg){
+  document.getElementById('errBox').innerHTML=
+    '<div class="glass-card" style="padding:16px;border-color:hsl(var(--destructive)/0.5);color:hsl(var(--destructive))">'+msg+'</div>';
+}
 async function refreshData(){
   if(isLoading)return; isLoading=true; document.getElementById('refIcon').className='spin';
   document.getElementById('errBox').innerHTML='';
   try{
     const [dolar,astro,belo,binance,dolarCripto,tiendacrypto]=await Promise.all([
-      fetchJSON('https://criptoya.com/api/dolar'),
-      fetchJSON('https://criptoya.com/api/astropay/usdt/ars/1'),
-      fetchJSON('https://criptoya.com/api/belo/usdc/ars/1'),
+      fetchJSON('https://criptoya.com/api/dolar').catch(()=>null),
+      fetchJSON('https://criptoya.com/api/astropay/usdt/ars/1').catch(()=>null),
+      fetchJSON('https://criptoya.com/api/belo/usdc/ars/1').catch(()=>null),
       fetchJSON('https://criptoya.com/api/binancep2p/usdt/ars/1').catch(()=>null),
       // dolarapi.com (CORS abierto): "dólar cripto" = CCL vía USDC/USDT. Se usa solo como
       // fallback de Takenos si TiendaCrypto no responde.
@@ -345,28 +368,25 @@ async function refreshData(){
       // en dos mediciones separadas (sep-2026) — evidencia de que es su proveedor de liquidez.
       fetchJSON('https://criptoya.com/api/tiendacrypto/usdt/ars/1').catch(()=>null)
     ]);
-    const mep=dolar?.mep?.al30?.['24hs']?.price;
-    const ccl=dolar?.ccl?.al30?.['24hs']?.price;
-    const cripto=dolarCripto?.compra;
-    const tiendaCryptoRate=tiendacrypto?.totalBid||tiendacrypto?.bid;
+    const mep=dolar?.mep?.al30?.['24hs']?.price??null;
+    const ccl=dolar?.ccl?.al30?.['24hs']?.price??null;
+    const cripto=dolarCripto?.compra??null;
+    const tiendaCryptoRate=tiendacrypto?.totalBid||tiendacrypto?.bid||null;
     rates.mep=mep; rates.ccl=ccl; rates.cripto=cripto;
-    rates.astropay=astro.totalBid||astro.bid;
-    rates.belo=belo.totalBid||belo.bid;
-    rates.binance=binance?(binance.totalBid||binance.bid):null;
+    rates.astropay=astro?(astro.totalBid||astro.bid||null):null;
+    rates.belo=belo?(belo.totalBid||belo.bid||null):null;
+    rates.binance=binance?(binance.totalBid||binance.bid||null):null;
     rates.payoneer=ccl?ccl*0.99:null;
-    rates.grabrfi=mep; rates.santander=mep; rates.takenos=tiendaCryptoRate||cripto||mep;
-    // sync non-manual config rate keys from API
-    if(!manualKeys.includes('astropayUsdtToArs')) config.astropayUsdtToArs=rates.astropay;
-    if(!manualKeys.includes('astropayUsdToArs'))  config.astropayUsdToArs=rates.astropay;
-    if(!manualKeys.includes('beloUsdtToArs'))     config.beloUsdtToArs=rates.belo;
-    if(!manualKeys.includes('binanceUsdtToArs') && rates.binance) config.binanceUsdtToArs=rates.binance;
-    if(!manualKeys.includes('takenosUsdToArs') && rates.takenos) config.takenosUsdToArs=rates.takenos;
+    rates.grabrfi=mep; rates.santander=mep; rates.takenos=tiendaCryptoRate||cripto||mep||null;
+    applyLiveRates();
     saveConfig();
     lastRefresh=new Date();
+    const miss=missingRates();
+    if(miss.length)showErr('⚠ No se pudo obtener la tasa en vivo de: '+miss.join(', ')+'.');
     snapshot();
   }catch(e){
-    document.getElementById('errBox').innerHTML=
-      '<div class="glass-card" style="padding:16px;border-color:hsl(var(--destructive)/0.5);color:hsl(var(--destructive))">⚠ No se pudieron cargar tasas en vivo. Mostrando últimos valores guardados.</div>';
+    Object.keys(rates).forEach(k=>rates[k]=null); applyLiveRates();
+    showErr('⚠ No se pudieron cargar las tasas en vivo.');
   }finally{
     isLoading=false; document.getElementById('refIcon').className='';
     renderAll();
@@ -397,8 +417,9 @@ function calculateComparison(amount){
   const ga=clamp(a*c.grabrfiAchOutPct/100,c.grabrfiAchOutMin,c.grabrfiAchOutMax); let b=a-ga;
   const cv=b*c.grabrfiUsdToUsdtPct/100; let cc=b-cv;
   const wd=cc*c.grabrfiUsdtWithdrawPct/100+c.grabrfiUsdtWithdrawFixed; let d=cc-wd-c.astropayReceiveFee;
-  const r1ARS=d*c.astropayUsdtToArs;
-  const r1={id:'astropay',name:'Banco en USD → GrabrFi → USDT → AstroPay',finalAmountARS:r1ARS,
+  const toARS=(usd,rate)=>rate?usd*rate:null; // null = tasa en vivo no disponible
+  const r1ARS=toARS(d,c.astropayUsdtToArs);
+  const r1={id:'astropay',name:'Banco en USD → GrabrFi → USDT → AstroPay',finalAmountARS:r1ARS,missingRate:r1ARS==null?'AstroPay':null,
     transferMethod:'Banco en USD → GrabrFi: ACH  ·  GrabrFi → AstroPay: USDT (Tron/BSC)',
     steps:[
       step('Banco en USD','GrabrFi','ach',mercAch,'fixed',amount,a),
@@ -409,8 +430,8 @@ function calculateComparison(amount){
     ]};
   // R5 Binance P2P (misma adquisición de USDT que R1; venta P2P 0% al mejor precio)
   const binUSDT=cc-wd;
-  const r5ARS=binUSDT*c.binanceUsdtToArs;
-  const r5={id:'binance',name:'Banco en USD → GrabrFi → USDT → Binance P2P',finalAmountARS:r5ARS,
+  const r5ARS=toARS(binUSDT,c.binanceUsdtToArs);
+  const r5={id:'binance',name:'Banco en USD → GrabrFi → USDT → Binance P2P',finalAmountARS:r5ARS,missingRate:r5ARS==null?'Binance P2P':null,
     transferMethod:'Banco en USD → GrabrFi: ACH  ·  GrabrFi → Binance P2P: USDT (Tron/BSC)',
     steps:[
       step('Banco en USD','GrabrFi','ach',mercAch,'fixed',amount,a),
@@ -426,8 +447,8 @@ function calculateComparison(amount){
   // $1.5 estándar (<$50k/mes); $4 si el monto es < umbral (~$400).
   const p2=(p<c.payoneerSmallThreshold)?c.payoneerAchOutSmall:c.payoneerAchOutFixed; p-=p2;
   const pb=Math.max(p*c.beloAchInPct/100,c.beloAchInMin); p-=pb;
-  const r2ARS=p*beloRate;
-  const r2={id:'payoneer',name:'Banco en USD → Payoneer → Belo',finalAmountARS:r2ARS,
+  const r2ARS=toARS(p,beloRate);
+  const r2={id:'payoneer',name:'Banco en USD → Payoneer → Belo',finalAmountARS:r2ARS,missingRate:r2ARS==null?'Belo':null,
     transferMethod:'Banco en USD → Payoneer: ACH  ·  Payoneer → Belo: ACH',
     steps:[
       step('Banco en USD','Payoneer','ach',mercAch,'fixed',amount,amount-mercAch),
@@ -440,8 +461,8 @@ function calculateComparison(amount){
   let g=amount-mercAch;
   const g1=clamp(g*c.grabrfiAchOutPct/100,c.grabrfiAchOutMin,c.grabrfiAchOutMax); g-=g1;
   const g2=Math.max(g*c.beloAchInPct/100,c.beloAchInMin); g-=g2;
-  const r3ARS=g*beloRate;
-  const r3={id:'grabrfi',name:'Banco en USD → GrabrFi → Belo',finalAmountARS:r3ARS,
+  const r3ARS=toARS(g,beloRate);
+  const r3={id:'grabrfi',name:'Banco en USD → GrabrFi → Belo',finalAmountARS:r3ARS,missingRate:r3ARS==null?'Belo':null,
     transferMethod:'Banco en USD → GrabrFi: ACH  ·  GrabrFi → Belo: ACH',
     steps:[
       step('Banco en USD','GrabrFi','ach',mercAch,'fixed',amount,amount-mercAch),
@@ -453,8 +474,8 @@ function calculateComparison(amount){
   // rates.santander YA es la tasa MEP (ver fetchRates: rates.santander=mep), así que no hay
   // spread adicional que modelar acá — mismo criterio que R1/R5 con el totalBid de CriptoYa.
   const s=amount-c.mercuryWireOut;
-  const r4ARS=s*(rates.santander||beloRate);
-  const r4={id:'santander',name:'Banco en USD Wire → Santander → Dólar MEP',finalAmountARS:r4ARS,
+  const r4ARS=toARS(s,rates.santander);
+  const r4={id:'santander',name:'Banco en USD Wire → Santander → Dólar MEP',finalAmountARS:r4ARS,missingRate:r4ARS==null?'Dólar MEP':null,
     transferMethod:'Banco en USD → Santander: Wire  ·  Santander → ARS: Dólar MEP',
     steps:[
       step('Banco en USD','Santander','wire',c.mercuryWireOut,'fixed',amount,s),
@@ -463,8 +484,8 @@ function calculateComparison(amount){
     ]};
   // R6 Takenos (ACH directo; 0% en todos los pasos según la ficha del proveedor)
   const tk=amount-mercAch;
-  const r6ARS=tk*c.takenosUsdToArs;
-  const r6={id:'takenos',name:'Banco en USD → Takenos → CBU/CVU',finalAmountARS:r6ARS,
+  const r6ARS=toARS(tk,c.takenosUsdToArs);
+  const r6={id:'takenos',name:'Banco en USD → Takenos → CBU/CVU',finalAmountARS:r6ARS,missingRate:r6ARS==null?'Takenos':null,
     transferMethod:'Banco en USD → Takenos: ACH  ·  Takenos → CBU/CVU: transferencia local',
     steps:[
       step('Banco en USD','Takenos','ach',mercAch,'fixed',amount,tk),
@@ -473,16 +494,18 @@ function calculateComparison(amount){
     ]};
   const paths={astropay:r1,payoneer:r2,grabrfi:r3,santander:r4,binance:r5,takenos:r6};
   const arr=[r1,r2,r3,r4,r5,r6];
-  const best=arr.reduce((m,x)=>x.finalAmountARS>m.finalAmountARS?x:m);
+  const best=arr.reduce((m,x)=>x.finalAmountARS!=null&&(!m||x.finalAmountARS>m.finalAmountARS)?x:m,null);
   // Ahorro de la mejor ruta vs. la referencia Banco en USD Wire → Santander → Dólar MEP (R4)
-  const savings=best.finalAmountARS-r4.finalAmountARS;
-  return {...paths,recommendation:best.id,best,savings,savingsPercentage:savings/r4.finalAmountARS*100};
+  const savings=best&&r4.finalAmountARS!=null?best.finalAmountARS-r4.finalAmountARS:null;
+  return {...paths,recommendation:best?best.id:null,best,savings,savingsPercentage:savings!=null?savings/r4.finalAmountARS*100:null};
 }
 
 /* ---------- Formatting ---------- */
 const fmtARS=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(n);
 const fmtUSD=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(n);
 const fmtRate=n=>n?new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(n):'—';
+const ERR=t=>`<span style="color:hsl(var(--destructive))">${t}</span>`;
+const rateTxt=w=>w.rate?'$'+fmtRate(w.rate):(w.slug==='mercury'?'—':ERR('Error'));
 
 /* ---------- Render ---------- */
 function isMan(k){return manualKeys.includes(k);}
@@ -498,8 +521,8 @@ function renderRateCards(){
   document.getElementById('rateCards').innerHTML=data.map(d=>`
     <div class="glass-card rate" style="border-left:3px solid hsl(var(${d.tone}))">
       <div class="top"><span class="lbl">${d.name}</span>
-        ${d.man?'<span class="badge man">Manual</span>':'<span class="badge up">en vivo</span>'}</div>
-      <div class="val">${d.rate?'$'+fmtRate(d.rate):'—'}</div>
+        ${d.man?'<span class="badge man">Manual</span>':(d.rate?'<span class="badge up">en vivo</span>':'<span class="badge" style="color:hsl(var(--destructive))">error</span>')}</div>
+      <div class="val">${d.rate?'$'+fmtRate(d.rate):ERR('Error: sin tasa en vivo')}</div>
       <div class="sub">1 USD → ARS</div>
     </div>`).join('');
 }
@@ -519,11 +542,15 @@ function renderCalc(){
       <div class="route-method">${p.transferMethod}</div>
       ${charged.length?charged.map(stepLine).join(''):'<div class="step" style="font-style:italic">Sin comisiones en ningún paso</div>'}
       <div class="route-tot">
-        <div class="t"><span class="muted">Total:</span><span class="big">${fmtARS(p.finalAmountARS)}</span></div>
-        <div class="rate-line">1 USD = ${fmtRate(p.finalAmountARS/amt)} ARS</div>
+        <div class="t"><span class="muted">Total:</span>${p.finalAmountARS==null?ERR('Error: sin tasa '+p.missingRate):`<span class="big">${fmtARS(p.finalAmountARS)}</span>`}</div>
+        ${p.finalAmountARS==null?'':`<div class="rate-line">1 USD = ${fmtRate(p.finalAmountARS/amt)} ARS</div>`}
       </div></div>`;
   }).join('');
-  document.getElementById('saveBanner').innerHTML=`
+  document.getElementById('saveBanner').innerHTML=r.savings==null?`
+    <div class="save-banner">
+      <div><div class="muted" style="font-size:13px">Ahorro de la mejor ruta vs. Banco en USD Wire → Santander → Dólar MEP:</div>
+      <div class="big">${ERR('Error: falta la tasa en vivo (MEP o la de la mejor ruta)')}</div></div>
+    </div>`:`
     <div class="save-banner">
       <div><div class="muted" style="font-size:13px">Ahorro de ${r.best.name.split('→').pop().trim()} (mejor ruta) vs. Banco en USD Wire → Santander → Dólar MEP:</div>
       <div class="big">+${fmtARS(r.savings)} (${r.savingsPercentage.toFixed(2)}%)</div></div>
@@ -537,7 +564,7 @@ function renderWallets(){
       <div class="step"><span class="muted">ACH Entrada</span><span class="${w.achInTxt==='Gratis'?'free':''}">${w.achInTxt}</span></div>
       <div class="step"><span class="muted">ACH Salida</span><span class="${w.achOutTxt==='Gratis'?'free':''}">${w.achOutTxt}</span></div>
       <div class="step" style="margin-top:8px"><span class="muted">Tasa USD → ARS</span>
-        <span style="color:hsl(var(--primary));font-weight:700">${w.rate?'$'+fmtRate(w.rate):'—'}</span></div>
+        <span style="color:hsl(var(--primary));font-weight:700">${rateTxt(w)}</span></div>
     </div>`).join('');
 }
 function renderTable(){
@@ -545,19 +572,24 @@ function renderTable(){
     <td><span class="w-name"><span class="w-dot" style="background:hsl(var(${w.tone}))"></span>${w.name}</span></td>
     <td class="${w.achInTxt==='Gratis'?'free':''}">${w.achInTxt}</td>
     <td class="${w.achOutTxt==='Gratis'?'free':''}">${w.achOutTxt}</td>
-    <td>${w.rate?fmtRate(w.rate):'—'}</td></tr>`).join('');
+    <td>${w.rate?fmtRate(w.rate):(w.slug==='mercury'?'—':ERR('Error'))}</td></tr>`).join('');
   document.getElementById('ratesTable').innerHTML=
     `<thead><tr><th>Billetera</th><th>ACH Entrada</th><th>ACH Salida</th><th>Tasa USD→ARS</th></tr></thead><tbody>${rows}</tbody>`;
 }
 function renderArb(){
   const amt=parseFloat(document.getElementById('arbAmount').value)||0;
   const r=calculateComparison(amt);
-  const mep=rates.santander||config.beloUsdtToArs;
+  const mep=rates.santander;
   const santAchOut=0;
+  document.getElementById('arbMep').innerHTML=mep?'$'+fmtRate(mep)+' ARS':ERR('Error: sin tasa MEP');
+  if(!mep||!r.best){
+    document.getElementById('arbSteps').innerHTML='';
+    document.getElementById('arbResult').innerHTML=`<div class="arb-res neg">${ERR('No se puede calcular el ciclo: falta una tasa en vivo (MEP o la de la mejor ruta).')}</div>`;
+    return;
+  }
   const divisor=mep*(1+santAchOut/100);
   const finalUSD=r.best.finalAmountARS/divisor;
   const profit=finalUSD-amt, roi=amt?profit/amt*100:0, pos=profit>0;
-  document.getElementById('arbMep').textContent='$'+fmtRate(mep)+' ARS';
   document.getElementById('arbSteps').innerHTML=`
     <div class="arb-step"><span>1. Capital Inicial:</span><span class="v">${fmtUSD(amt)}</span></div>
     <div class="arb-step"><span>2. Conversión Máxima a Pesos:<br/><span class="muted" style="font-size:12px">vía ${r.best.name.replace('Banco en USD → ','').replace('Banco en USD Wire → ','')}</span></span><span class="v">${fmtARS(r.best.finalAmountARS)}</span></div>
@@ -589,8 +621,8 @@ async function toggleNotify(){
   alertCfg.notify=Notification.permission==='granted';saveAlertCfg();renderAlert();
 }
 function currentRoi(){
-  const r=calculateComparison(1000);const mep=rates.santander||config.beloUsdtToArs;
-  if(!mep)return -Infinity;
+  const r=calculateComparison(1000);const mep=rates.santander;
+  if(!mep||!r.best)return -Infinity;
   return (r.best.finalAmountARS/mep-1000)/1000*100;
 }
 function renderAlert(){
@@ -630,6 +662,7 @@ function snapshot(){
   try{
     const h=JSON.parse(localStorage.getItem('history.v1')||'[]');
     const r=calculateComparison(1000);
+    if(!r.best)return; // sin tasas en vivo no se registra el punto
     h.push({t:Date.now(),rate:r.best.finalAmountARS/1000,route:r.recommendation});
     if(h.length>5000)h.splice(0,h.length-5000);
     localStorage.setItem('history.v1',JSON.stringify(h));

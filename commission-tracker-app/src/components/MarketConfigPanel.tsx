@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Settings2, RotateCcw, X } from "lucide-react";
-import type { MarketConfig } from "../hooks/useCommissionData";
+import type { MarketConfig, FeeKey } from "../hooks/useCommissionData";
 
-const FEE_FIELDS: [keyof MarketConfig, string][] = [
+const FEE_FIELDS: [FeeKey, string][] = [
   ["mercuryAchOut", "Banco en USD ACH out (USD)"],
   ["mercuryWireOut", "Banco en USD Wire intl (USD)"],
   ["grabrfiAchOutPct", "GrabrFi ACH out %"],
@@ -30,7 +30,7 @@ interface Props {
 
 export default function MarketConfigPanel({ config, onChange, onReset, manualKeys }: Props) {
   const [open, setOpen] = useState(false);
-  const field = (arr: [keyof MarketConfig, string][]) =>
+  const field = (arr: [FeeKey, string][]) =>
     arr.map(([k, label]) => (
       <div key={k} className="mb-3">
         <label className="mb-1 flex items-center justify-between text-sm text-foreground/80">

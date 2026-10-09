@@ -56,7 +56,8 @@ const NODES: Record<string, NodeDef> = {
 interface EdgeDef {
   from: string;
   to: string;
-  apply: (amount: number, cfg: MarketConfig) => { amount: number; steps: RouteStep[] };
+  // null = falta una tasa en vivo: el camino se descarta (no hay tasas de respaldo)
+  apply: (amount: number, cfg: MarketConfig) => { amount: number; steps: RouteStep[] } | null;
 }
 
 const pct = (n: number) => `${n.toLocaleString("es-AR", { maximumFractionDigits: 2 })}%`;
@@ -140,6 +141,7 @@ const EDGES: EdgeDef[] = [
       const wd = (amt * c.grabrfiUsdtWithdrawPct) / 100 + c.grabrfiUsdtWithdrawFixed;
       const afterWd = amt - wd;
       const afterRecv = afterWd - c.astropayReceiveFee;
+      if (!c.astropayUsdtToArs) return null;
       const out = afterRecv * c.astropayUsdtToArs;
       return { amount: out, steps: [
         { label: "Retiro USDT (red)", fee: `${pct(c.grabrfiUsdtWithdrawPct)} + ${usd(c.grabrfiUsdtWithdrawFixed)}`, amountOut: afterWd, unit: "USDT" },
@@ -155,6 +157,7 @@ const EDGES: EdgeDef[] = [
     apply: (amt, c) => {
       const wd = (amt * c.grabrfiUsdtWithdrawPct) / 100 + c.grabrfiUsdtWithdrawFixed;
       const afterWd = amt - wd;
+      if (!c.binanceUsdtToArs) return null;
       const out = afterWd * c.binanceUsdtToArs;
       return { amount: out, steps: [
         { label: "Retiro USDT (red)", fee: `${pct(c.grabrfiUsdtWithdrawPct)} + ${usd(c.grabrfiUsdtWithdrawFixed)}`, amountOut: afterWd, unit: "USDT" },
@@ -167,6 +170,7 @@ const EDGES: EdgeDef[] = [
   {
     from: "belo", to: "ars_belo",
     apply: (amt, c) => {
+      if (!c.beloUsdtToArs) return null;
       const out = amt * c.beloUsdtToArs;
       return { amount: out, steps: [
         { label: "Venta USD → ARS (Belo/MEP)", fee: `× ${c.beloUsdtToArs.toLocaleString("es-AR")}`, amountOut: out, unit: "ARS" },
@@ -179,6 +183,7 @@ const EDGES: EdgeDef[] = [
     from: "mercury", to: "ars_takenos",
     apply: (amt, c) => {
       const afterMercury = amt - c.mercuryAchOut;
+      if (!c.takenosUsdToArs) return null;
       const out = afterMercury * c.takenosUsdToArs;
       return { amount: out, steps: [
         { label: "Banco en USD → Takenos (ACH)", fee: usd(c.mercuryAchOut), amountOut: afterMercury, unit: "USD" },
@@ -210,23 +215,24 @@ function enumeratePaths(): EdgeDef[][] {
  * de mayor a menor monto final en ARS. results[0] es la mejor combinación.
  */
 export function optimizeRoutes(amountUSD: number, cfg: MarketConfig): RouteResult[] {
-  const results = enumeratePaths().map((edges): RouteResult => {
+  const results = enumeratePaths().flatMap((edges): RouteResult[] => {
     let amount = amountUSD;
     const steps: RouteStep[] = [];
     const nodeIds = [START];
     for (const e of edges) {
       const r = e.apply(amount, cfg);
+      if (!r) return [];
       amount = r.amount;
       steps.push(...r.steps);
       nodeIds.push(e.to);
     }
-    return {
+    return [{
       id: nodeIds.join(">"),
       name: nodeIds.map((id) => NODES[id].label).join(" → "),
       finalARS: amount,
       effectiveRate: amountUSD > 0 ? amount / amountUSD : 0,
       steps,
-    };
+    }];
   });
   return results.sort((a, b) => b.finalARS - a.finalARS);
 }

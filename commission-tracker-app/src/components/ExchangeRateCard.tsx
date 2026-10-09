@@ -24,14 +24,18 @@ export default function ExchangeRateCard({ card, highlight = false }: { card: Ra
           )}
           {card.isManual ? (
             <span className="rounded-full bg-warning/20 px-2 py-0.5 text-xs font-bold text-warning">Manual</span>
-          ) : (
+          ) : card.rate ? (
             <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-bold text-success">en vivo</span>
+          ) : (
+            <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-bold text-destructive">error</span>
           )}
         </div>
       </div>
-      <div className="mt-1 text-3xl font-extrabold">
-        {card.rate ? `$${fmtNum(card.rate)}` : "—"}
-      </div>
+      {card.rate ? (
+        <div className="mt-1 text-3xl font-extrabold">${fmtNum(card.rate)}</div>
+      ) : (
+        <div className="mt-1 text-xl font-extrabold text-destructive">Error: sin tasa en vivo</div>
+      )}
       <div className="mt-1 text-xs text-muted-foreground">
         1 USD → ARS{card.source ? ` · ${card.source}` : ""}
       </div>

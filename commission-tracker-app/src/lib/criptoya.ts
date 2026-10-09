@@ -21,11 +21,13 @@ async function fetchJSON(url: string) {
   return r.json();
 }
 
+// Nunca lanza: cada fuente que falla queda en `null` (la UI lo muestra como error,
+// no hay tasas de respaldo hardcodeadas).
 export async function fetchLiveRates(): Promise<LiveRates> {
   const [dolar, astro, belo, binance, dolarCripto, tiendacrypto] = await Promise.all([
-    fetchJSON("https://criptoya.com/api/dolar"),
-    fetchJSON("https://criptoya.com/api/astropay/usdt/ars/1"),
-    fetchJSON("https://criptoya.com/api/belo/usdc/ars/1"),
+    fetchJSON("https://criptoya.com/api/dolar").catch(() => null),
+    fetchJSON("https://criptoya.com/api/astropay/usdt/ars/1").catch(() => null),
+    fetchJSON("https://criptoya.com/api/belo/usdc/ars/1").catch(() => null),
     fetchJSON("https://criptoya.com/api/binancep2p/usdt/ars/1").catch(() => null),
     // dolarapi.com: sin auth, CORS abierto. Trae el "dólar cripto" (CCL calculado vía
     // USDC/USDT). Se usa solo como fallback de Takenos si TiendaCrypto no responde.

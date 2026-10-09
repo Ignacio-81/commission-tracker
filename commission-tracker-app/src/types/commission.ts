@@ -16,12 +16,15 @@ export interface TransferStep {
   from: string; to: string;
   type: "ach" | "wire" | "internal" | "conversion";
   fee: number; feeType: "fixed" | "percentage";
-  amount: number; resultAmount: number;
+  amount: number; resultAmount: number | null;
 }
 
 export interface TransferPath {
   id: string; name: string; steps: TransferStep[];
-  totalFees: number; finalAmountARS: number; effectiveRate: number;
+  totalFees: number;
+  /** null = la tasa en vivo de la ruta no está disponible (ver `missingRate`) */
+  finalAmountARS: number | null; effectiveRate: number | null;
+  missingRate?: string;
   transferMethod: string;
 }
 
@@ -29,6 +32,6 @@ export interface ComparisonResult {
   astropayPath: TransferPath; payoneerPath: TransferPath;
   grabrfiPath: TransferPath; santanderPath: TransferPath;
   binancePath: TransferPath; takenosPath: TransferPath;
-  recommendation: "astropay" | "payoneer" | "grabrfi" | "santander" | "binance" | "takenos";
-  savings: number; savingsPercentage: number;
+  recommendation: "astropay" | "payoneer" | "grabrfi" | "santander" | "binance" | "takenos" | null;
+  savings: number | null; savingsPercentage: number | null;
 }

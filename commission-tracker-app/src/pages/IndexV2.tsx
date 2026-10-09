@@ -82,6 +82,12 @@ export default function IndexV2() {
           </div>
         </section>
 
+        {amount > 0 && routes.length === 0 && (
+          <div className="flex items-center gap-3 rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-destructive">
+            <AlertCircle className="h-5 w-5" /> No hay rutas calculables: faltan tasas en vivo.
+          </div>
+        )}
+
         {/* Mejor combinación */}
         {best && (
           <section className="glass-card glow-success rounded-2xl border-l-4 border-success p-6">

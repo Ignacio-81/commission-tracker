@@ -8,11 +8,12 @@ import type {
 } from "../types/commission";
 
 export interface MarketConfig {
-  astropayUsdToArs: number;
-  astropayUsdtToArs: number;
-  beloUsdtToArs: number;
-  binanceUsdtToArs: number;
-  takenosUsdToArs: number;
+  // Tasas en vivo: null = no se pudo traer de la web (no hay valor de respaldo).
+  astropayUsdToArs: number | null;
+  astropayUsdtToArs: number | null;
+  beloUsdtToArs: number | null;
+  binanceUsdtToArs: number | null;
+  takenosUsdToArs: number | null;
   mercuryAchOut: number;
   mercuryWireOut: number;
   grabrfiAchOutPct: number;
@@ -30,17 +31,21 @@ export interface MarketConfig {
   payoneerSmallThreshold: number;
 }
 
+export type RateKey = "astropayUsdToArs" | "astropayUsdtToArs" | "beloUsdtToArs" | "binanceUsdtToArs" | "takenosUsdToArs";
+export type FeeKey = Exclude<keyof MarketConfig, RateKey>;
+const RATE_KEYS: RateKey[] = ["astropayUsdToArs", "astropayUsdtToArs", "beloUsdtToArs", "binanceUsdtToArs", "takenosUsdToArs"];
+
 const DEFAULTS: MarketConfig = {
-  astropayUsdToArs: 1474,
-  astropayUsdtToArs: 1475,
-  beloUsdtToArs: 1470,
-  binanceUsdtToArs: 1500,
+  // Las tasas NO tienen valor por defecto: se llenan en cada refresh desde la web.
   // Takenos no publica una API/tasa propia consultable por CORS. Se usa el totalBid de
   // TiendaCrypto (USDT/ARS vía CriptoYa), que calzó exacto con la tasa real mostrada
   // in-app por Takenos en mediciones separadas (sep-2026) — evidencia de que es su
   // proveedor de liquidez. Fallback: dólar cripto (dolarapi.com), luego MEP.
-  // Se sincroniza en cada refresh salvo edición manual.
-  takenosUsdToArs: 1470,
+  astropayUsdToArs: null,
+  astropayUsdtToArs: null,
+  beloUsdtToArs: null,
+  binanceUsdtToArs: null,
+  takenosUsdToArs: null,
   mercuryAchOut: 0,
   mercuryWireOut: 15,
   grabrfiAchOutPct: 0.3,
@@ -70,7 +75,7 @@ const SNAPSHOT_AMOUNT = 1000;
 const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
 const step = (
   from: string, to: string, type: TransferStep["type"],
-  fee: number, feeType: TransferStep["feeType"], amount: number, resultAmount: number,
+  fee: number, feeType: TransferStep["feeType"], amount: number, resultAmount: number | null,
 ): TransferStep => ({ from, to, type, fee, feeType, amount, resultAmount });
 
 export interface HistoryPoint {
@@ -82,9 +87,40 @@ export interface HistoryPoint {
   mep?: number | null;
 }
 
+// Las tasas guardadas en localStorage se descartan al cargar: serían valores viejos.
+function withoutRates(cfg: MarketConfig): MarketConfig {
+  const next = { ...cfg };
+  for (const k of RATE_KEYS) next[k] = null;
+  return next;
+}
 function loadConfig(): MarketConfig {
-  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(CFG_KEY) || "{}") }; }
+  try { return withoutRates({ ...DEFAULTS, ...JSON.parse(localStorage.getItem(CFG_KEY) || "{}") }); }
   catch { return { ...DEFAULTS }; }
+}
+
+// Vuelca las tasas en vivo al config; los campos editados a mano se respetan.
+// Si una fuente no respondió queda en null (error), nunca un valor viejo.
+function applyLiveRates(cfg: MarketConfig, rates: LiveRates | null, manual: string[]): MarketConfig {
+  const live: Record<RateKey, number | null> = {
+    astropayUsdtToArs: rates?.astropay ?? null,
+    astropayUsdToArs: rates?.astropay ?? null,
+    beloUsdtToArs: rates?.belo ?? null,
+    binanceUsdtToArs: rates?.binance ?? null,
+    takenosUsdToArs: rates?.takenos ?? null,
+  };
+  const next = { ...cfg };
+  for (const k of RATE_KEYS) if (!manual.includes(k)) next[k] = live[k];
+  return next;
+}
+
+const MISSING_LABELS: [RateKey | "mep", string][] = [
+  ["astropayUsdtToArs", "AstroPay"], ["beloUsdtToArs", "Belo"], ["binanceUsdtToArs", "Binance P2P"],
+  ["takenosUsdToArs", "Takenos"], ["mep", "Dólar MEP (Santander)"],
+];
+function missingRates(cfg: MarketConfig, rates: LiveRates | null): string[] {
+  return MISSING_LABELS
+    .filter(([k]) => (k === "mep" ? rates?.mep == null : cfg[k] == null))
+    .map(([, label]) => label);
 }
 function loadManual(): string[] {
   try { return JSON.parse(localStorage.getItem(MANUAL_KEY) || "[]"); }
@@ -122,9 +158,10 @@ export function useCommissionData() {
   }, []);
 
   const resetMarketConfig = useCallback(() => {
-    setMarketConfigState({ ...DEFAULTS });
+    const next = applyLiveRates({ ...DEFAULTS }, ratesRef.current, []);
+    setMarketConfigState(next);
     setManualKeys([]);
-    persist({ ...DEFAULTS }, []);
+    persist(next, []);
   }, []);
 
   const buildCommissions = (cfg: MarketConfig, rates: Awaited<ReturnType<typeof fetchLiveRates>> | null): WalletCommission[] => {
@@ -133,10 +170,10 @@ export function useCommissionData() {
       { name: "Banco en USD", slug: "mercury", achIncoming: 0, achOutgoing: cfg.mercuryAchOut, wireIncoming: 0, wireOutgoing: cfg.mercuryWireOut, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, lastUpdated: now, feeSource: "official-documentation" },
       { name: "Payoneer", slug: "payoneer", achIncoming: cfg.payoneerAchIn, achOutgoing: cfg.payoneerAchOutFixed, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: rates?.payoneer ?? undefined, lastUpdated: now, rateSource: "CCL x 0.99 (estimado)", feeSource: "official-documentation" },
       { name: "GrabrFi", slug: "grabrfi", achIncoming: 0, achOutgoing: cfg.grabrfiAchOutPct, achOutgoingMin: cfg.grabrfiAchOutMin, achOutgoingMax: cfg.grabrfiAchOutMax, wireIncoming: 5, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: rates?.grabrfi ?? undefined, lastUpdated: now, rateSource: "Dolar MEP", feeSource: "official-documentation" },
-      { name: "Astropay", slug: "astropay", achIncoming: cfg.astropayReceiveFee, achOutgoing: 3.5, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 2.5, monthlyFee: 0, usdToArsRate: cfg.astropayUsdtToArs, lastUpdated: now, rateSource: "CriptoYa", rateIsManual: manRef.current.includes("astropayUsdtToArs") },
-      { name: "Belo", slug: "belo", achIncoming: cfg.beloAchInPct, achIncomingMin: cfg.beloAchInMin, achOutgoing: 5, wireIncoming: 20, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: cfg.beloUsdtToArs, lastUpdated: now, rateSource: "CriptoYa", rateIsManual: manRef.current.includes("beloUsdtToArs") },
-      { name: "Santander", slug: "santander", achIncoming: 0, achOutgoing: 0, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: rates?.santander ?? cfg.beloUsdtToArs, lastUpdated: now, rateSource: "Dolar MEP" },
-      { name: "Takenos", slug: "takenos", achIncoming: 0, achOutgoing: 0, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: cfg.takenosUsdToArs, lastUpdated: now, rateSource: "TiendaCrypto USDT/ARS (bid), vía CriptoYa", feeSource: "official-documentation", rateIsManual: manRef.current.includes("takenosUsdToArs") },
+      { name: "Astropay", slug: "astropay", achIncoming: cfg.astropayReceiveFee, achOutgoing: 3.5, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 2.5, monthlyFee: 0, usdToArsRate: cfg.astropayUsdtToArs ?? undefined, lastUpdated: now, rateSource: "CriptoYa", rateIsManual: manRef.current.includes("astropayUsdtToArs") },
+      { name: "Belo", slug: "belo", achIncoming: cfg.beloAchInPct, achIncomingMin: cfg.beloAchInMin, achOutgoing: 5, wireIncoming: 20, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: cfg.beloUsdtToArs ?? undefined, lastUpdated: now, rateSource: "CriptoYa", rateIsManual: manRef.current.includes("beloUsdtToArs") },
+      { name: "Santander", slug: "santander", achIncoming: 0, achOutgoing: 0, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: rates?.santander ?? undefined, lastUpdated: now, rateSource: "Dolar MEP" },
+      { name: "Takenos", slug: "takenos", achIncoming: 0, achOutgoing: 0, wireIncoming: 0, wireOutgoing: 0, internalTransfer: 0, conversionFee: 0, monthlyFee: 0, usdToArsRate: cfg.takenosUsdToArs ?? undefined, lastUpdated: now, rateSource: "TiendaCrypto USDT/ARS (bid), vía CriptoYa", feeSource: "official-documentation", rateIsManual: manRef.current.includes("takenosUsdToArs") },
     ];
   };
 
@@ -145,13 +182,14 @@ export function useCommissionData() {
       const h: HistoryPoint[] = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
       const r = getResult(SNAPSHOT_AMOUNT);
       const best = [r.astropayPath, r.payoneerPath, r.grabrfiPath, r.santanderPath, r.binancePath, r.takenosPath]
-        .reduce((m, x) => (x.finalAmountARS > m.finalAmountARS ? x : m));
+        .find((x) => x.id === r.recommendation);
+      if (!best || best.finalAmountARS == null) return; // sin tasas en vivo no se registra el punto
       const lr = ratesRef.current;
       h.push({
         t: Date.now(),
         rate: best.finalAmountARS / SNAPSHOT_AMOUNT,
-        route: r.recommendation,
-        belo: lr?.belo ?? cfg.beloUsdtToArs ?? null,
+        route: best.id,
+        belo: lr?.belo ?? null,
         binance: lr?.binance ?? null,
         mep: lr?.mep ?? null,
       });
@@ -167,8 +205,10 @@ export function useCommissionData() {
     const mercury = bySlug("mercury");
     const payoneer = bySlug("payoneer");
     const grabrfi = bySlug("grabrfi");
-    const belo = bySlug("belo");
     const beloRate = c.beloUsdtToArs;
+    // null si la tasa en vivo no está disponible: la ruta se marca con error, sin valor de respaldo.
+    const toARS = (usd: number, rate: number | null | undefined) => (rate ? usd * rate : null);
+    const perUSD = (ars: number | null) => (ars == null ? null : ars / amountUSD);
 
     // R1 AstroPay (Crypto)
     // NOTA: la comisión de conversión de AstroPay (~2.5%) NO se descuenta acá a propósito.
@@ -182,10 +222,11 @@ export function useCommissionData() {
     const cc = b - cv;
     const wd = (cc * c.grabrfiUsdtWithdrawPct) / 100 + c.grabrfiUsdtWithdrawFixed;
     const d = cc - wd - c.astropayReceiveFee;
-    const r1ARS = d * c.astropayUsdtToArs;
+    const r1ARS = toARS(d, c.astropayUsdtToArs);
     const astropayPath: TransferPath = {
       id: "astropay", name: "Banco en USD → GrabrFi → USDT → AstroPay", finalAmountARS: r1ARS,
-      effectiveRate: r1ARS / amountUSD, totalFees: amountUSD - d,
+      effectiveRate: perUSD(r1ARS), totalFees: amountUSD - d,
+      missingRate: r1ARS == null ? "AstroPay" : undefined,
       transferMethod: "Banco en USD → GrabrFi: ACH  ·  GrabrFi → AstroPay: USDT (Tron/BSC)",
       steps: [
         step("Banco en USD", "GrabrFi", "ach", c.mercuryAchOut, "fixed", amountUSD, a),
@@ -198,10 +239,11 @@ export function useCommissionData() {
 
     // R5 Binance P2P (misma adquisición de USDT que R1; venta P2P 0% al mejor precio)
     const binanceUSDT = cc - wd;
-    const r5ARS = binanceUSDT * c.binanceUsdtToArs;
+    const r5ARS = toARS(binanceUSDT, c.binanceUsdtToArs);
     const binancePath: TransferPath = {
       id: "binance", name: "Banco en USD → GrabrFi → USDT → Binance P2P", finalAmountARS: r5ARS,
-      effectiveRate: r5ARS / amountUSD, totalFees: amountUSD - binanceUSDT,
+      effectiveRate: perUSD(r5ARS), totalFees: amountUSD - binanceUSDT,
+      missingRate: r5ARS == null ? "Binance P2P" : undefined,
       transferMethod: "Banco en USD → GrabrFi: ACH  ·  GrabrFi → Binance P2P: USDT (Tron/BSC)",
       steps: [
         step("Banco en USD", "GrabrFi", "ach", c.mercuryAchOut, "fixed", amountUSD, a),
@@ -223,10 +265,11 @@ export function useCommissionData() {
     p -= pOut;
     const pAfterPayoneerRetiro = p;
     p -= Math.max((p * c.beloAchInPct) / 100, c.beloAchInMin);
-    const r2ARS = p * (belo.usdToArsRate ?? beloRate);
+    const r2ARS = toARS(p, beloRate);
     const payoneerPath: TransferPath = {
       id: "payoneer", name: "Banco en USD → Payoneer → Belo", finalAmountARS: r2ARS,
-      effectiveRate: r2ARS / amountUSD, totalFees: amountUSD - p,
+      effectiveRate: perUSD(r2ARS), totalFees: amountUSD - p,
+      missingRate: r2ARS == null ? "Belo" : undefined,
       transferMethod: "Banco en USD → Payoneer: ACH  ·  Payoneer → Belo: ACH",
       steps: [
         step("Banco en USD", "Payoneer", "ach", mercury.achOutgoing, "fixed", amountUSD, pAfterMercury),
@@ -243,10 +286,11 @@ export function useCommissionData() {
     g -= clamp((g * grabrfi.achOutgoing) / 100, grabrfi.achOutgoingMin!, grabrfi.achOutgoingMax!);
     const gAfterGrabrfi = g;
     g -= Math.max((g * c.beloAchInPct) / 100, c.beloAchInMin);
-    const r3ARS = g * (belo.usdToArsRate ?? beloRate);
+    const r3ARS = toARS(g, beloRate);
     const grabrfiPath: TransferPath = {
       id: "grabrfi", name: "Banco en USD → GrabrFi → Belo", finalAmountARS: r3ARS,
-      effectiveRate: r3ARS / amountUSD, totalFees: amountUSD - g,
+      effectiveRate: perUSD(r3ARS), totalFees: amountUSD - g,
+      missingRate: r3ARS == null ? "Belo" : undefined,
       transferMethod: "Banco en USD → GrabrFi: ACH  ·  GrabrFi → Belo: ACH",
       steps: [
         step("Banco en USD", "GrabrFi", "ach", mercury.achOutgoing, "fixed", amountUSD, gAfterMercury),
@@ -263,10 +307,11 @@ export function useCommissionData() {
     // mismo criterio que R1/R5 con el `totalBid` de CriptoYa.
     const santander = bySlug("santander");
     const s = amountUSD - c.mercuryWireOut;
-    const r4ARS = s * (santander.usdToArsRate ?? c.beloUsdtToArs);
+    const r4ARS = toARS(s, santander.usdToArsRate);
     const santanderPath: TransferPath = {
       id: "santander", name: "Banco en USD Wire → Santander → Dólar MEP", finalAmountARS: r4ARS,
-      effectiveRate: r4ARS / amountUSD, totalFees: amountUSD - s,
+      effectiveRate: perUSD(r4ARS), totalFees: amountUSD - s,
+      missingRate: r4ARS == null ? "Dólar MEP" : undefined,
       transferMethod: "Banco en USD → Santander: Wire  ·  Santander → ARS: Dólar MEP",
       steps: [
         step("Banco en USD", "Santander", "wire", c.mercuryWireOut, "fixed", amountUSD, s),
@@ -276,12 +321,12 @@ export function useCommissionData() {
     };
 
     // R6 Takenos (ACH directo, sin intermediarios; 0% en todos los pasos)
-    const takenos = bySlug("takenos");
     const tk = amountUSD - c.mercuryAchOut;
-    const r6ARS = tk * (takenos.usdToArsRate ?? c.takenosUsdToArs);
+    const r6ARS = toARS(tk, c.takenosUsdToArs);
     const takenosPath: TransferPath = {
       id: "takenos", name: "Banco en USD → Takenos → CBU/CVU", finalAmountARS: r6ARS,
-      effectiveRate: r6ARS / amountUSD, totalFees: amountUSD - tk,
+      effectiveRate: perUSD(r6ARS), totalFees: amountUSD - tk,
+      missingRate: r6ARS == null ? "Takenos" : undefined,
       transferMethod: "Banco en USD → Takenos: ACH  ·  Takenos → CBU/CVU: transferencia local",
       steps: [
         step("Banco en USD", "Takenos", "ach", c.mercuryAchOut, "fixed", amountUSD, tk),
@@ -291,14 +336,15 @@ export function useCommissionData() {
     };
 
     const paths = [astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath, takenosPath];
-    const best = paths.reduce((m, x) => (x.finalAmountARS > m.finalAmountARS ? x : m));
+    const best = paths.reduce<TransferPath | null>(
+      (m, x) => (x.finalAmountARS != null && (!m || x.finalAmountARS > m.finalAmountARS!) ? x : m), null);
     // Ahorro de la mejor ruta vs. la referencia Banco en USD Wire → Santander → Dólar MEP (R4).
-    const savings = best.finalAmountARS - santanderPath.finalAmountARS;
+    const savings = best && r4ARS != null ? best.finalAmountARS! - r4ARS : null;
 
     return {
       astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath, takenosPath,
-      recommendation: best.id as ComparisonResult["recommendation"],
-      savings, savingsPercentage: (savings / santanderPath.finalAmountARS) * 100,
+      recommendation: (best?.id ?? null) as ComparisonResult["recommendation"],
+      savings, savingsPercentage: savings != null && r4ARS ? (savings / r4ARS) * 100 : null,
     };
   }, [commissions]);
 
@@ -309,23 +355,20 @@ export function useCommissionData() {
       const rates = await fetchLiveRates();
       ratesRef.current = rates;
       setLiveRates(rates);
-      const man = manRef.current;
-      setMarketConfigState((prev) => {
-        const next = { ...prev };
-        if (!man.includes("astropayUsdtToArs") && rates.astropay) next.astropayUsdtToArs = rates.astropay;
-        if (!man.includes("astropayUsdToArs") && rates.astropay) next.astropayUsdToArs = rates.astropay;
-        if (!man.includes("beloUsdtToArs") && rates.belo) next.beloUsdtToArs = rates.belo;
-        if (!man.includes("binanceUsdtToArs") && rates.binance) next.binanceUsdtToArs = rates.binance;
-        if (!man.includes("takenosUsdToArs") && rates.takenos) next.takenosUsdToArs = rates.takenos;
-        cfgRef.current = next;
-        localStorage.setItem(CFG_KEY, JSON.stringify(next));
-        setCommissions(buildCommissions(next, rates));
-        return next;
-      });
+      const next = applyLiveRates(cfgRef.current, rates, manRef.current);
+      cfgRef.current = next;
+      setMarketConfigState(next);
+      localStorage.setItem(CFG_KEY, JSON.stringify(next));
+      setCommissions(buildCommissions(next, rates));
+      const missing = missingRates(next, rates);
+      setError(missing.length ? `No se pudo obtener la tasa en vivo de: ${missing.join(", ")}.` : null);
       setLastRefresh(new Date());
     } catch (e) {
-      setError("No se pudieron cargar tasas en vivo. Mostrando últimos valores guardados.");
-      setCommissions((prev) => (prev.length ? prev : buildCommissions(cfgRef.current, null)));
+      const next = applyLiveRates(cfgRef.current, null, manRef.current);
+      cfgRef.current = next;
+      setMarketConfigState(next);
+      setCommissions(buildCommissions(next, null));
+      setError("No se pudieron cargar las tasas en vivo.");
     } finally {
       setIsLoading(false);
     }

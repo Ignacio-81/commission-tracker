@@ -56,11 +56,17 @@ export default function ComparisonCalculator({ onCalculate }: Props) {
               <div className="mt-3 border-t border-border/50 pt-3">
                 <div className="flex items-baseline justify-between text-sm">
                   <span className="text-muted-foreground">Total:</span>
-                  <span className="text-xl font-extrabold tabular-nums">{fmtARS(p.finalAmountARS)}</span>
+                  {p.finalAmountARS == null ? (
+                    <span className="text-sm font-bold text-destructive">Error: sin tasa {p.missingRate}</span>
+                  ) : (
+                    <span className="text-xl font-extrabold tabular-nums">{fmtARS(p.finalAmountARS)}</span>
+                  )}
                 </div>
-                <div className="mt-0.5 text-right text-xs tabular-nums text-primary">
-                  1 USD = {fmtNum(p.finalAmountARS / (amount || 1))} ARS
-                </div>
+                {p.finalAmountARS != null && (
+                  <div className="mt-0.5 text-right text-xs tabular-nums text-primary">
+                    1 USD = {fmtNum(p.finalAmountARS / (amount || 1))} ARS
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -70,9 +76,13 @@ export default function ComparisonCalculator({ onCalculate }: Props) {
       <div className="mt-5 flex items-center justify-between rounded-xl border border-success/40 bg-success/10 px-6 py-4">
         <div>
           <div className="text-sm text-muted-foreground">Ahorro de la mejor ruta vs. Banco en USD Wire → Santander → Dólar MEP:</div>
-          <div className="text-2xl font-extrabold text-success">
-            +{fmtARS(result.savings)} ({result.savingsPercentage.toFixed(2)}%)
-          </div>
+          {result.savings == null || result.savingsPercentage == null ? (
+            <div className="text-lg font-extrabold text-destructive">Error: falta la tasa en vivo (MEP o la de la mejor ruta)</div>
+          ) : (
+            <div className="text-2xl font-extrabold text-success">
+              +{fmtARS(result.savings)} ({result.savingsPercentage.toFixed(2)}%)
+            </div>
+          )}
         </div>
         <TrendingUp className="h-7 w-7 text-success" />
       </div>

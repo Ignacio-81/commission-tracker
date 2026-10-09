@@ -59,7 +59,8 @@ export default function Index() {
     if (!commissions.length || !santander?.usdToArsRate) return -Infinity;
     const r = calculateComparison(REF_AMOUNT);
     const best = [r.astropayPath, r.payoneerPath, r.grabrfiPath, r.santanderPath, r.binancePath, r.takenosPath]
-      .reduce((m, x) => (x.finalAmountARS > m.finalAmountARS ? x : m));
+      .find((x) => x.id === r.recommendation);
+    if (!best || best.finalAmountARS == null) return -Infinity;
     const divisor = santander.usdToArsRate * (1 + (santander.achOutgoing ?? 0) / 100);
     const finalUSD = divisor ? best.finalAmountARS / divisor : 0;
     return ((finalUSD - REF_AMOUNT) / REF_AMOUNT) * 100;

@@ -102,6 +102,12 @@ Fuente adicional (fallback de Takenos si CriptoYa/TiendaCrypto no responde):
 |---|---|---|
 | Dólar cripto (fallback Takenos) | `/v1/dolares/cripto` | `compra`, con fallback final a MEP |
 
+**Sin valores de respaldo.** Las tasas (`astropayUsdtToArs`, `beloUsdtToArs`, `binanceUsdtToArs`,
+`takenosUsdToArs`, más el MEP) no tienen valor por defecto ni se leen de `localStorage`: si una
+fuente no responde, la tasa queda en `null` y la UI muestra "Error" (la ruta afectada no se calcula
+ni entra al ranking, al puré ni al histórico). Cada fuente falla de forma independiente. Santander
+(R4) ya no cae a la tasa de Belo cuando falta el MEP.
+
 Refresco automático: cada **5 minutos** + al volver a la pestaña (visibilitychange).
 
 ---

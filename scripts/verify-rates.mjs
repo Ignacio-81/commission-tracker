@@ -140,7 +140,8 @@ function extractDefaults(text) {
   const m = text.match(/DEFAULTS[^{]*\{([\s\S]*?)\n\}/);
   if (!m) return null;
   const out = {};
-  for (const [, k, v] of m[1].matchAll(/(\w+)\s*:\s*(-?[\d.]+)/g)) out[k] = Number(v);
+  // Las tasas en vivo van en null (sin valor de respaldo); se registran igual para saber que la clave existe.
+  for (const [, k, v] of m[1].matchAll(/(\w+)\s*:\s*(-?[\d.]+|null)(?![\w.])/g)) out[k] = v === "null" ? null : Number(v);
   return out;
 }
 
