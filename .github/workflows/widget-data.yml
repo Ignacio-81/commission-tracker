@@ -1,0 +1,53 @@
+name: Actualizar datos del widget
+
+# Genera widget.json (top 3 de tasas USD->ARS + mejor ruta del optimizador v2) con el mismo
+# código que la web y lo publica en la rama `widget-json`. El widget de Android lo lee desde:
+#   https://raw.githubusercontent.com/Ignacio-81/commission-tracker/widget-json/widget.json
+# (CriptoYa bloquea a los Workers de Cloudflare, por eso se genera acá y no en un Worker).
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # GitHub puede demorar o saltear algunas corridas
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: widget-data
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependencias
+        working-directory: widget-data
+        run: npm ci --no-audit --no-fund
+
+      - name: Generar widget.json
+        working-directory: widget-data
+        run: npx tsx src/build.ts "$RUNNER_TEMP/widget.json"
+
+      - name: Publicar en la rama widget-json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir "$RUNNER_TEMP/pub"
+          cp "$RUNNER_TEMP/widget.json" "$RUNNER_TEMP/pub/"
+          cd "$RUNNER_TEMP/pub"
+          git init -q -b widget-json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add widget.json
+          git commit -q -m "widget.json $(date -u +%Y-%m-%dT%H:%MZ)"
+          # Rama huérfana y push forzado: no acumula historial de cada actualización.
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" widget-json
