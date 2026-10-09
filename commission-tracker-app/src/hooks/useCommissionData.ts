@@ -16,8 +16,6 @@ const CFG_KEY = "marketConfig.v1";
 const MANUAL_KEY = "marketConfig.manualKeys.v1";
 const HISTORY_KEY = "history.v1";
 const HISTORY_MAX = 5000;
-// Monto fijo con el que se calcula el punto del histórico (tasa = ARS finales / monto).
-const SNAPSHOT_AMOUNT = 1000;
 
 const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
 const step = (
@@ -27,11 +25,10 @@ const step = (
 
 export interface HistoryPoint {
   t: number;
-  rate: number;
-  route: string;
   belo?: number | null;
   binance?: number | null;
   mep?: number | null;
+  takenos?: number | null;
 }
 
 // Las tasas guardadas en localStorage se descartan al cargar: serían valores viejos.
@@ -104,22 +101,20 @@ export function useCommissionData() {
     ];
   };
 
-  const snapshot = useCallback((cfg: MarketConfig, getResult: (a: number) => ComparisonResult) => {
+  // Histórico: solo tasas de mercado (no dependen del monto). Un punto sin ninguna tasa no se guarda.
+  const snapshot = useCallback(() => {
     try {
-      const h: HistoryPoint[] = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-      const r = getResult(SNAPSHOT_AMOUNT);
-      const best = [r.astropayPath, r.payoneerPath, r.grabrfiPath, r.santanderPath, r.binancePath, r.takenosPath]
-        .find((x) => x.id === r.recommendation);
-      if (!best || best.finalAmountARS == null) return; // sin tasas en vivo no se registra el punto
       const lr = ratesRef.current;
-      h.push({
+      const point: HistoryPoint = {
         t: Date.now(),
-        rate: best.finalAmountARS / SNAPSHOT_AMOUNT,
-        route: best.id,
         belo: lr?.belo ?? null,
         binance: lr?.binance ?? null,
         mep: lr?.mep ?? null,
-      });
+        takenos: lr?.takenos ?? null,
+      };
+      if (point.belo == null && point.binance == null && point.mep == null && point.takenos == null) return;
+      const h: HistoryPoint[] = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+      h.push(point);
       if (h.length > HISTORY_MAX) h.splice(0, h.length - HISTORY_MAX);
       localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
     } catch { /* noop */ }
@@ -303,7 +298,7 @@ export function useCommissionData() {
 
   // snapshot histórico cuando cambian las comisiones
   useEffect(() => {
-    if (commissions.length) snapshot(cfgRef.current, calculateComparison);
+    if (commissions.length) snapshot();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [commissions]);
 

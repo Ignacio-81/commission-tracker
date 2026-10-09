@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertCircle, Trophy, ArrowRight, TrendingUp } from "lucide-react";
 import { useCommissionData } from "../hooks/useCommissionData";
+import { REFERENCE_AMOUNT_USD } from "../lib/settings";
 import { fmtARS, fmtNum } from "../lib/format";
 import { optimizeRoutes, type RouteResult, type Unit } from "../lib/routeOptimizer";
 import Header from "../components/Header";
@@ -22,7 +23,7 @@ export default function IndexV2() {
     marketConfig, setMarketConfig, resetMarketConfig, manualKeys,
   } = useCommissionData();
 
-  const [amount, setAmount] = useState<number>(3450);
+  const [amount, setAmount] = useState<number>(REFERENCE_AMOUNT_USD);
 
   const routes = useMemo(
     () => (amount > 0 ? optimizeRoutes(amount, marketConfig) : []),

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { AlertCircle } from "lucide-react";
 import { useCommissionData } from "../hooks/useCommissionData";
+import { REFERENCE_AMOUNT_USD as REF_AMOUNT } from "../lib/settings";
 import Header from "../components/Header";
 import ExchangeRateCard, { type RateCardData } from "../components/ExchangeRateCard";
 import type { WalletCommission } from "../types/commission";
@@ -10,7 +11,6 @@ import ArbitrageLoopCalculator from "../components/ArbitrageLoopCalculator";
 import HistoryChart from "../components/HistoryChart";
 import AlertsBanner from "../components/AlertsBanner";
 
-const REF_AMOUNT = 3450;
 
 export default function Index() {
   const {

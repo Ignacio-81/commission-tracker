@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { TrendingUp, TrendingDown, RefreshCcw } from "lucide-react";
 import type { ComparisonResult, WalletCommission, TransferPath } from "../types/commission";
+import { REFERENCE_AMOUNT_USD } from "../lib/settings";
 import { fmtARS, fmtUSD, fmtNum } from "../lib/format";
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
 }
 
 export default function ArbitrageLoopCalculator({ onCalculate, santander }: Props) {
-  const [amount, setAmount] = useState(3450);
+  const [amount, setAmount] = useState(REFERENCE_AMOUNT_USD);
 
   const { best, finalUSD, profit, roi } = useMemo(() => {
     const res = onCalculate(amount || 0);

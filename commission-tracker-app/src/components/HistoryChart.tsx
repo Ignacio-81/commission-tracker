@@ -10,26 +10,18 @@ const round2 = (v: number | null | undefined) =>
 
 interface ChartRow {
   label: string;
-  rate: number;
   belo: number | null;
   binance: number | null;
   mep: number | null;
+  takenos: number | null;
 }
 
 const SERIES: { key: keyof ChartRow; name: string; color: string }[] = [
-  { key: "rate", name: "Mejor ruta", color: "hsl(173 80% 55%)" },
   { key: "belo", name: "Belo", color: "hsl(45 93% 58%)" },
   { key: "binance", name: "Binance P2P", color: "hsl(38 92% 50%)" },
   { key: "mep", name: "MEP", color: "hsl(217 91% 60%)" },
+  { key: "takenos", name: "Takenos", color: "hsl(150 65% 45%)" },
 ];
-
-// Versiones previas guardaban `rate` = ARS de 3450 USD / 1000 (3,45x inflado).
-// Se detecta por ser absurdamente mayor que la tasa MEP/Belo del mismo punto y se corrige al leer.
-const LEGACY_FACTOR = 3.45;
-function fixLegacyRate(p: HistoryPoint): HistoryPoint {
-  const ref = p.mep ?? p.belo ?? p.binance;
-  return ref && p.rate > ref * 2 ? { ...p, rate: p.rate / LEGACY_FACTOR } : p;
-}
 
 // Re-lee el histórico de localStorage. `tick` fuerza refresco cuando cambian las comisiones.
 export default function HistoryChart({ tick }: { tick: number }) {
@@ -39,19 +31,21 @@ export default function HistoryChart({ tick }: { tick: number }) {
     let h: HistoryPoint[] = [];
     try { h = JSON.parse(localStorage.getItem("history.v1") || "[]"); } catch { /* noop */ }
     setData(
-      h.map(fixLegacyRate).map((p) => ({
+      h.map((p) => ({
         label: new Date(p.t).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
-        rate: round2(p.rate) ?? 0,
         belo: round2(p.belo),
         binance: round2(p.binance),
         mep: round2(p.mep),
+        takenos: round2(p.takenos),
       }))
+        // Puntos viejos que solo tenían la "mejor ruta" (ya no se grafica) quedarían vacíos.
+        .filter((r) => r.belo != null || r.binance != null || r.mep != null || r.takenos != null)
     );
   }, [tick]);
 
   return (
     <div className="glass-card rounded-xl p-6">
-      <h3 className="mb-4 text-xl font-bold">📈 Histórico — Tasas USD→ARS (Mejor ruta, Belo, Binance P2P, MEP)</h3>
+      <h3 className="mb-4 text-xl font-bold">📈 Histórico — Tasas USD→ARS (Belo, Binance P2P, MEP, Takenos)</h3>
       {data.length < 2 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
           Acumulando datos… el histórico se construye con cada actualización.

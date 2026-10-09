@@ -181,7 +181,7 @@ src/
 |---|---|
 | `marketConfig.v1` | Objeto `MarketConfig` con todos los valores del panel |
 | `marketConfig.manualKeys.v1` | Array de keys que el usuario editó manualmente |
-| `history.v1` | Array de hasta 500 `HistoryPoint` (timestamp, tasa, ruta ganadora) |
+| `history.v1` | Array de hasta 5000 `HistoryPoint` (timestamp + tasas Belo, Binance P2P, MEP y Takenos; sin la mejor ruta, así no depende del monto) |
 | `alerts.v1` | Config de alertas: umbral % y si las notificaciones están activas |
 
 ---

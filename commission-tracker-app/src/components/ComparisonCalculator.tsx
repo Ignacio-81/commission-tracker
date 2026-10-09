@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { TrendingUp } from "lucide-react";
 import type { ComparisonResult, TransferPath, TransferStep } from "../types/commission";
+import { REFERENCE_AMOUNT_USD } from "../lib/settings";
 import { fmtARS, fmtUSD, fmtNum } from "../lib/format";
 
 interface Props {
@@ -14,7 +15,7 @@ function deduction(s: TransferStep) {
 }
 
 export default function ComparisonCalculator({ onCalculate }: Props) {
-  const [amount, setAmount] = useState(3450);
+  const [amount, setAmount] = useState(REFERENCE_AMOUNT_USD);
   const result = useMemo(() => onCalculate(amount || 0), [amount, onCalculate]);
   const paths: TransferPath[] = [result.astropayPath, result.payoneerPath, result.grabrfiPath, result.santanderPath, result.binancePath, result.takenosPath];
 

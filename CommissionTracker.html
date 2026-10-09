@@ -228,7 +228,7 @@
 
   <!-- Historical chart -->
   <section class="glass-card flow">
-    <h3 class="sec">📈 Histórico — Mejor tasa efectiva (ARS por USD)</h3>
+    <h3 class="sec">📈 Histórico — Tasas USD→ARS (Belo, Binance P2P, MEP, Takenos)</h3>
     <canvas id="histChart"></canvas>
     <p class="muted" style="font-size:12px;margin-top:10px">Cada actualización guarda un punto. El histórico se acumula en este navegador.</p>
   </section>
@@ -280,6 +280,9 @@
 
 <script>
 /* ---------- Config ---------- */
+// Monto de referencia (USD): único lugar. Debe coincidir con REFERENCE_AMOUNT_USD en
+// commission-tracker-app/src/lib/settings.ts (de ahí lo toma también el widget).
+const REFERENCE_AMOUNT_USD = 3450;
 const DEFAULTS = {
   // Las tasas NO tienen valor por defecto: se llenan en cada refresh desde la web.
   // null = no se pudo traer (la UI muestra error, sin valores de respaldo).
@@ -625,9 +628,9 @@ async function toggleNotify(){
   alertCfg.notify=Notification.permission==='granted';saveAlertCfg();renderAlert();
 }
 function currentRoi(){
-  const r=calculateComparison(1000);const mep=rates.santander;
+  const r=calculateComparison(REFERENCE_AMOUNT_USD);const mep=rates.santander;
   if(!mep||!r.best)return -Infinity;
-  return (r.best.finalAmountARS/mep-1000)/1000*100;
+  return (r.best.finalAmountARS/mep-REFERENCE_AMOUNT_USD)/REFERENCE_AMOUNT_USD*100;
 }
 function renderAlert(){
   const roi=currentRoi(); if(!isFinite(roi))return;
@@ -665,9 +668,10 @@ function renderAll(){
 function snapshot(){
   try{
     const h=JSON.parse(localStorage.getItem('history.v1')||'[]');
-    const r=calculateComparison(1000);
-    if(!r.best)return; // sin tasas en vivo no se registra el punto
-    h.push({t:Date.now(),rate:r.best.finalAmountARS/1000,route:r.recommendation});
+    // Solo tasas de mercado (no dependen del monto). Sin ninguna tasa no se registra el punto.
+    const pt={t:Date.now(),belo:rates.belo,binance:rates.binance,mep:rates.mep,takenos:rates.takenos};
+    if([pt.belo,pt.binance,pt.mep,pt.takenos].every(v=>v==null))return;
+    h.push(pt);
     if(h.length>5000)h.splice(0,h.length-5000);
     localStorage.setItem('history.v1',JSON.stringify(h));
   }catch(e){}
@@ -676,12 +680,12 @@ let chart=null;
 function renderChart(){
   let h=[]; try{h=JSON.parse(localStorage.getItem('history.v1')||'[]')}catch(e){}
   const labels=h.map(p=>new Date(p.t).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));
-  const data=h.map(p=>p.rate);
+  const series=[['Belo','belo','hsl(45,93%,58%)'],['Binance P2P','binance','hsl(38,92%,50%)'],
+    ['MEP','mep','hsl(217,91%,60%)'],['Takenos','takenos','hsl(150,65%,45%)']];
   const ctx=document.getElementById('histChart');
   if(chart)chart.destroy();
-  chart=new Chart(ctx,{type:'line',data:{labels,datasets:[{
-    label:'ARS por USD (mejor ruta)',data,borderColor:'hsl(173,80%,55%)',
-    backgroundColor:'rgba(45,212,191,0.12)',fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},
+  chart=new Chart(ctx,{type:'line',data:{labels,datasets:series.map(([label,key,color])=>({
+    label,data:h.map(p=>p[key]??null),borderColor:color,spanGaps:true,tension:0.3,pointRadius:1,borderWidth:2}))},
     options:{responsive:true,plugins:{legend:{labels:{color:'#cbd5e1'}}},
       scales:{x:{ticks:{color:'#64748b',maxTicksLimit:8},grid:{color:'rgba(148,163,184,0.08)'}},
               y:{ticks:{color:'#64748b'},grid:{color:'rgba(148,163,184,0.08)'}}}}});
@@ -694,6 +698,8 @@ function toggleSheet(open){
 }
 
 /* ---------- Init ---------- */
+document.getElementById('calcAmount').value=REFERENCE_AMOUNT_USD;
+document.getElementById('arbAmount').value=REFERENCE_AMOUNT_USD;
 loadConfig(); renderAll(); refreshData();
 setInterval(refreshData,5*60*1000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshData();});
