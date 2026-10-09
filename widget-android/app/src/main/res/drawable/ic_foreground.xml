@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícono: tres barras de tasas (la primera en verde, como la mejor del widget). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FF4ADE80" android:pathData="M36,40h36a3,3 0,0 1,0 6h-36a3,3 0,0 1,0 -6z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M36,51h30a3,3 0,0 1,0 6h-30a3,3 0,0 1,0 -6z" />
+    <path android:fillColor="#B3FFFFFF" android:pathData="M36,62h24a3,3 0,0 1,0 6h-24a3,3 0,0 1,0 -6z" />
+</vector>

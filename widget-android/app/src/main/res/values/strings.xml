@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wallet Path</string>
+    <string name="widget_name">Tasas USD → ARS</string>
+    <string name="widget_description">Top 3 de tasas USD→ARS y la mejor ruta de transferencia</string>
+</resources>

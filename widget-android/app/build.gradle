@@ -1,0 +1,39 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "ar.walletpath.widget"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "ar.walletpath.widget"
+        minSdk 26
+        targetSdk 34
+        // En CI se pasa el número de corrida para que cada APK sea una versión nueva.
+        versionCode((System.getenv("GITHUB_RUN_NUMBER") ?: "1") as int)
+        versionName "1.0." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+    }
+
+    // Firma fija (clave de uso personal, versionada en el repo) para que cada APK nuevo
+    // se instale encima del anterior sin desinstalar.
+    signingConfigs {
+        fixed {
+            storeFile file("../keystore/widget.keystore")
+            storePassword "android"
+            keyAlias "widget"
+            keyPassword "android"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.fixed
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

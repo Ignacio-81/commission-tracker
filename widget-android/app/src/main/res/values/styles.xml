@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Texto sobre fondo transparente: la sombra lo hace legible sobre cualquier fondo de pantalla. -->
+    <style name="WidgetText">
+        <item name="android:textColor">#FFFFFFFF</item>
+        <item name="android:shadowColor">#8C000000</item>
+        <item name="android:shadowDx">0</item>
+        <item name="android:shadowDy">1</item>
+        <item name="android:shadowRadius">3</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="WidgetText.Dim">
+        <item name="android:textColor">#B3FFFFFF</item>
+    </style>
+
+    <style name="WidgetText.Caps" parent="WidgetText.Dim">
+        <item name="android:textSize">10sp</item>
+        <item name="android:letterSpacing">0.08</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <style name="WidgetText.Rank" parent="WidgetText.Dim">
+        <item name="android:textSize">11sp</item>
+        <item name="android:layout_width">16dp</item>
+    </style>
+
+    <style name="WidgetText.Name">
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="WidgetText.Value">
+        <item name="android:textSize">16sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:fontFeatureSettings">tnum</item>
+    </style>
+</resources>
