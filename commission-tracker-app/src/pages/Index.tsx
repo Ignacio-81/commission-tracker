@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { AlertCircle } from "lucide-react";
 import { useCommissionData } from "../hooks/useCommissionData";
-import { fmtNum } from "../lib/format";
 import Header from "../components/Header";
-import ExchangeRateCard from "../components/ExchangeRateCard";
+import ExchangeRateCard, { type RateCardData } from "../components/ExchangeRateCard";
+import type { WalletCommission } from "../types/commission";
 import MarketConfigPanel from "../components/MarketConfigPanel";
 import ComparisonCalculator from "../components/ComparisonCalculator";
 import ArbitrageLoopCalculator from "../components/ArbitrageLoopCalculator";
@@ -37,6 +37,20 @@ export default function Index() {
     ].filter((v): v is number => typeof v === "number" && v > 0);
     return vals.length ? Math.max(...vals) : null;
   }, [binanceP2p, astropay, belo, santander, takenos]);
+  // Todas las tasas USD→ARS con la misma jerarquía, de mayor a menor;
+  // las que no tienen tasa van al final
+  const rateCards = useMemo<RateCardData[]>(() => {
+    const fromWallet = (w?: WalletCommission): RateCardData[] =>
+      w ? [{ key: w.slug, name: w.name, rate: w.usdToArsRate, source: w.rateSource, isManual: w.rateIsManual, tone: `var(--${w.slug})` }] : [];
+    return [
+      ...fromWallet(astropay),
+      ...fromWallet(belo),
+      ...fromWallet(santander),
+      ...fromWallet(takenos),
+      { key: "binance", name: "Binance P2P", rate: binanceP2p, source: "CriptoYa (P2P bid)", tone: "38 92% 50%" },
+    ].sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0));
+  }, [astropay, belo, santander, takenos, binanceP2p]);
+
   const isBest = (rate?: number | null) =>
     bestRate != null && rate != null && rate === bestRate;
 
@@ -87,29 +101,10 @@ export default function Index() {
           <AlertsBanner roi={arbRoi} refreshKey={lastRefresh?.getTime() ?? 0} />
         )}
 
-        <section
-          className={`glass-card flex flex-wrap items-center justify-between gap-3 rounded-xl p-5 ${isBest(binanceP2p) ? "ring-2 ring-success shadow-[0_0_20px_hsl(142_71%_45%/0.35)]" : ""}`}
-          style={{ borderLeft: "3px solid hsl(38 92% 50%)" }}>
-          <div>
-            <span className="text-sm text-muted-foreground">Binance P2P · USDT/ARS</span>
-            <div className="mt-1 text-3xl font-extrabold">
-              {binanceP2p ? `$${fmtNum(binanceP2p)}` : "—"}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">1 USD → ARS · CriptoYa (P2P bid)</div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {isBest(binanceP2p) && (
-              <span className="rounded-full bg-success/20 px-2 py-0.5 text-xs font-bold text-success">★ Mejor</span>
-            )}
-            <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-bold text-success">en vivo</span>
-          </div>
-        </section>
-
-        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {astropay && <ExchangeRateCard wallet={astropay} highlight={isBest(astropay.usdToArsRate)} />}
-          {belo && <ExchangeRateCard wallet={belo} highlight={isBest(belo.usdToArsRate)} />}
-          {santander && <ExchangeRateCard wallet={santander} highlight={isBest(santander.usdToArsRate)} />}
-          {takenos && <ExchangeRateCard wallet={takenos} highlight={isBest(takenos.usdToArsRate)} />}
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          {rateCards.map((c) => (
+            <ExchangeRateCard key={c.key} card={c} highlight={isBest(c.rate)} />
+          ))}
         </section>
 
         <ComparisonCalculator onCalculate={calculateComparison} />
