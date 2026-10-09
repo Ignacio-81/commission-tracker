@@ -1,3 +1,0 @@
-name = "commission-tracker-widget"
-main = "src/index.ts"
-compatibility_date = "2025-01-01"
