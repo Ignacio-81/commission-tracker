@@ -495,6 +495,7 @@ function renderRateCards(){
     {name:'Santander (MEP)',rate:rates.santander,man:false,tone:'--santander'},
     {name:'Takenos (est. dólar cripto)',rate:config.takenosUsdToArs,man:isMan('takenosUsdToArs'),tone:'--takenos'}
   ];
+  data.sort((a,b)=>(b.rate||0)-(a.rate||0)); // de mayor a menor tasa
   document.getElementById('rateCards').innerHTML=data.map(d=>`
     <div class="glass-card rate" style="border-left:3px solid hsl(var(${d.tone}))">
       <div class="top"><span class="lbl">${d.name}</span>
