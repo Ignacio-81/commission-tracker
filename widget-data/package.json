@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "fflate": "^0.8.3",
     "tsx": "^4.19.0",
     "typescript": "^5.5.3"
   }

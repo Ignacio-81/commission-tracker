@@ -46,12 +46,16 @@ export async function buildPayload(amount = DEFAULT_AMOUNT) {
   // Mejor combinación = la misma que muestra la V2 (results[0]).
   const best = optimizeRoutes(amount, cfg)[0] ?? null;
   const now = new Date();
+  // Hora local de Argentina (UTC-3 fija, sin horario de verano): el widget no convierte husos.
+  const updatedTime = new Intl.DateTimeFormat("es-AR", {
+    hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Argentina/Buenos_Aires",
+  }).format(now);
 
   // Filas listas para dibujar (el widget no formatea nada): primero las tasas disponibles,
   // y si faltan para llegar a 3, las fuentes caídas como error.
   const rows = [
-    ...ok.map((r, i) => ({ rank: String(i + 1), name: r.name, value: `$${fmt(r.rate, 2)}`, error: false, best: i === 0 })),
-    ...failed.map((r) => ({ rank: "–", name: r.name, value: "Error: sin tasa", error: true, best: false })),
+    ...ok.map((r, i) => ({ rank: String(i + 1), name: r.name, value: `$${fmt(r.rate, 2)}`, error: false, isError: 0, best: i === 0, isBest: i === 0 ? 1 : 0 })),
+    ...failed.map((r) => ({ rank: "–", name: r.name, value: "Error: sin tasa", error: true, isError: 1, best: false, isBest: 0 })),
   ].slice(0, 3);
 
   return {
@@ -70,6 +74,10 @@ export async function buildPayload(amount = DEFAULT_AMOUNT) {
       rows,
       status: failed.length ? `⚠ ${failed.length} ${failed.length === 1 ? "fuente sin datos" : "fuentes sin datos"}` : "",
       hasError: failed.length > 0,
+      hasErrorNum: failed.length > 0 ? 1 : 0, // 1/0 para fórmulas de KWGT
+      updatedTime,
+      // Texto de la esquina superior derecha: aviso en rojo si falta una fuente.
+      header: failed.length ? `⚠ ${failed.length} ${failed.length === 1 ? "fuente sin datos" : "fuentes sin datos"} · ${updatedTime}` : `Act. ${updatedTime}`,
       routeName: best ? shortRoute(best.name) : "Error: sin rutas",
       routeTotal: best ? `$${fmt(best.finalARS, 0)}` : "Error",
       routeCaption: `por US$ ${fmt(amount, 0)}`,
