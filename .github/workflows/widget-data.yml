@@ -5,9 +5,10 @@ name: Actualizar datos del widget
 #   https://raw.githubusercontent.com/Ignacio-81/commission-tracker/widget-json/widget.json
 # (CriptoYa bloquea a los Workers de Cloudflare, por eso se genera acá y no en un Worker).
 
+# Sin cron propio: el schedule de GitHub corría solo 4-6 veces por día (best effort). Lo dispara el
+# Worker de Cloudflare (widget-trigger/) cada 15 minutos por workflow_dispatch; también se puede
+# correr a mano desde la pestaña Actions.
 on:
-  schedule:
-    - cron: "3,18,33,48 * * * *"   # minutos poco usados: GitHub demora/saltea los crons de minutos redondos (*/10, */5)
   workflow_dispatch:
 
 permissions:
