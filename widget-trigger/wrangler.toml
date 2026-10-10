@@ -1,0 +1,8 @@
+name = "commission-tracker-widget-trigger"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Cron de Cloudflare: corre a horario (a diferencia de los crons de GitHub Actions, que GitHub
+# retrasa y saltea). Cada corrida dispara el workflow widget-data.yml por la API de GitHub.
+[triggers]
+crons = ["*/15 * * * *"]

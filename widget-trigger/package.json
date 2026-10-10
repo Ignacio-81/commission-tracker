@@ -1,0 +1,16 @@
+{
+  "name": "commission-tracker-widget-trigger",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Cron de Cloudflare que dispara el workflow widget-data.yml cada 15 minutos",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250101.0",
+    "typescript": "^5.5.3",
+    "wrangler": "^3.100.0"
+  }
+}
