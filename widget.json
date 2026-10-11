@@ -1,0 +1,64 @@
+{
+  "updatedAt": "2026-10-11T00:45:17.304Z",
+  "updatedEpoch": 1791679517,
+  "amountUSD": 3450,
+  "topRates": [
+    {
+      "name": "Belo",
+      "rate": 1596.93
+    },
+    {
+      "name": "Binance P2P",
+      "rate": 1596.5
+    },
+    {
+      "name": "AstroPay",
+      "rate": 1583.38
+    }
+  ],
+  "bestRoute": {
+    "name": "Banco en USD → GrabrFi → Belo → ARS (Belo/MEP)",
+    "finalARS": 5488639.47,
+    "effectiveRate": 1590.91
+  },
+  "errors": [],
+  "display": {
+    "rows": [
+      {
+        "rank": "1",
+        "name": "Belo",
+        "value": "$1.596,93",
+        "error": false,
+        "isError": 0,
+        "best": true,
+        "isBest": 1
+      },
+      {
+        "rank": "2",
+        "name": "Binance P2P",
+        "value": "$1.596,50",
+        "error": false,
+        "isError": 0,
+        "best": false,
+        "isBest": 0
+      },
+      {
+        "rank": "3",
+        "name": "AstroPay",
+        "value": "$1.583,38",
+        "error": false,
+        "isError": 0,
+        "best": false,
+        "isBest": 0
+      }
+    ],
+    "status": "",
+    "hasError": false,
+    "hasErrorNum": 0,
+    "updatedTime": "21:45",
+    "header": "Act. 21:45",
+    "routeName": "Banco en USD → GrabrFi → Belo",
+    "routeTotal": "$5.488.639",
+    "routeCaption": "por US$ 3.450"
+  }
+}
