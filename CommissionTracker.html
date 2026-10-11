@@ -230,8 +230,9 @@
   <!-- Historical chart -->
   <section class="glass-card flow">
     <h3 class="sec">📈 Histórico — Tasas USD→ARS (Belo, Binance P2P, MEP, Takenos)</h3>
+    <p class="muted" id="histInfo" style="font-size:12px;margin:-4px 0 10px"></p>
     <canvas id="histChart"></canvas>
-    <p class="muted" style="font-size:12px;margin-top:10px">Cada actualización guarda un punto. El histórico se acumula en este navegador.</p>
+    <p class="muted" style="font-size:12px;margin-top:10px">Cada actualización guarda un punto. El histórico se acumula en este navegador y se conservan 60 días.</p>
   </section>
 
   <!-- Wallet fee cards -->
@@ -667,29 +668,66 @@ function renderAll(){
 }
 
 /* ---------- History / chart ---------- */
+// Retención por antigüedad: últimos 60 días (antes: tope de 5000 puntos ≈ 17 días).
+// Para el gráfico se promedia por intervalos (≤ ~400 puntos). Misma lógica que lib/history.ts.
+const HIST_DAYS=60, HIST_WIN=HIST_DAYS*864e5, HIST_SPACING=4*60e3, HIST_HARD_MAX=20000;
+const HIST_KEYS=['belo','binance','mep','takenos'];
+function readHistory(){
+  try{const h=JSON.parse(localStorage.getItem('history.v1')||'[]');return Array.isArray(h)?h.filter(p=>p&&typeof p.t==='number'):[]}catch(e){return[]}
+}
 function snapshot(){
-  try{
-    const h=JSON.parse(localStorage.getItem('history.v1')||'[]');
-    // Solo tasas de mercado (no dependen del monto). Sin ninguna tasa no se registra el punto.
-    const pt={t:Date.now(),belo:rates.belo,binance:rates.binance,mep:rates.mep,takenos:rates.takenos};
-    if([pt.belo,pt.binance,pt.mep,pt.takenos].every(v=>v==null))return;
-    h.push(pt);
-    if(h.length>5000)h.splice(0,h.length-5000);
-    localStorage.setItem('history.v1',JSON.stringify(h));
-  }catch(e){}
+  // Solo tasas de mercado (no dependen del monto). Sin ninguna tasa no se registra el punto.
+  const pt={t:Date.now(),belo:rates.belo,binance:rates.binance,mep:rates.mep,takenos:rates.takenos};
+  if([pt.belo,pt.binance,pt.mep,pt.takenos].every(v=>v==null))return;
+  const h=readHistory().filter(p=>p.t>=pt.t-HIST_WIN);
+  const last=h[h.length-1];
+  if(last&&pt.t-last.t<HIST_SPACING)h[h.length-1]=pt; else h.push(pt);
+  if(h.length>HIST_HARD_MAX)h.splice(0,h.length-HIST_HARD_MAX);
+  try{localStorage.setItem('history.v1',JSON.stringify(h))}
+  catch(e){try{localStorage.setItem('history.v1',JSON.stringify(h.slice(Math.floor(h.length/2))))}catch(e2){}}
+}
+function chartHistory(now=Date.now(),maxPoints=400){
+  const pts=readHistory().filter(p=>p.t>=now-HIST_WIN&&p.t<=now);
+  const M=60e3,H=60*M,B=[5*M,15*M,30*M,H,2*H,3*H,6*H,12*H,24*H];
+  if(!pts.length)return{rows:[],bucketMs:B[0]};
+  const span=pts[pts.length-1].t-pts[0].t;
+  const bucketMs=B.find(b=>span/b<=maxPoints)??B[B.length-1];
+  const OFF=-3*H, acc=new Map();
+  for(const p of pts){
+    const k=Math.floor((p.t+OFF)/bucketMs)*bucketMs-OFF;
+    let b=acc.get(k); if(!b){b={s:{},n:{}};HIST_KEYS.forEach(x=>{b.s[x]=0;b.n[x]=0});acc.set(k,b)}
+    for(const x of HIST_KEYS){const v=p[x];if(typeof v==='number'&&isFinite(v)){b.s[x]+=v;b.n[x]++}}
+  }
+  const rows=[];
+  for(const [t,b] of [...acc.entries()].sort((a,z)=>a[0]-z[0])){
+    const r={t};HIST_KEYS.forEach(x=>r[x]=b.n[x]?Math.round(b.s[x]/b.n[x]*100)/100:null);
+    if(HIST_KEYS.some(x=>r[x]!=null))rows.push(r);
+  }
+  return{rows,bucketMs};
 }
 let chart=null;
 function renderChart(){
-  let h=[]; try{h=JSON.parse(localStorage.getItem('history.v1')||'[]')}catch(e){}
-  const labels=h.map(p=>new Date(p.t).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));
+  const {rows,bucketMs}=chartHistory();
+  const TZ='America/Argentina/Buenos_Aires';
+  const fDay=t=>new Date(t).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',timeZone:TZ});
+  const fDT=t=>new Date(t).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:TZ});
+  const span=rows.length?rows[rows.length-1].t-rows[0].t:0;
+  const days=rows.length?Math.max(1,Math.round(span/864e5)):0;
+  const multiDay=days>=2;
+  const fB=ms=>ms>=864e5?'1 día':ms>=36e5?(ms/36e5)+' h':(ms/6e4)+' min';
+  document.getElementById('histInfo').textContent=`Últimos ${HIST_DAYS} días`+
+    (rows.length?` · datos desde ${fDay(rows[0].t)} (${days} ${days===1?'día':'días'})`:'')+
+    (rows.length>1?` · promedio cada ${fB(bucketMs)}`:'');
   const series=[['Belo','belo','hsl(45,93%,58%)'],['Binance P2P','binance','hsl(38,92%,50%)'],
     ['MEP','mep','hsl(217,91%,60%)'],['Takenos','takenos','hsl(150,65%,45%)']];
   const ctx=document.getElementById('histChart');
   if(chart)chart.destroy();
-  chart=new Chart(ctx,{type:'line',data:{labels,datasets:series.map(([label,key,color])=>({
-    label,data:h.map(p=>p[key]??null),borderColor:color,spanGaps:true,tension:0.3,pointRadius:1,borderWidth:2}))},
-    options:{responsive:true,plugins:{legend:{labels:{color:'#cbd5e1'}}},
-      scales:{x:{ticks:{color:'#64748b',maxTicksLimit:8},grid:{color:'rgba(148,163,184,0.08)'}},
+  chart=new Chart(ctx,{type:'line',data:{datasets:series.map(([label,key,color])=>({
+    label,data:rows.map(r=>({x:r.t,y:r[key]})),borderColor:color,spanGaps:true,tension:0.3,pointRadius:0,borderWidth:2}))},
+    options:{responsive:true,animation:false,parsing:true,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{color:'#cbd5e1'}},
+        tooltip:{callbacks:{title:it=>it.length?(bucketMs>=864e5?fDay(it[0].parsed.x):fDT(it[0].parsed.x)):''}}},
+      scales:{x:{type:'linear',ticks:{color:'#64748b',maxTicksLimit:8,callback:v=>multiDay?fDay(v):fDT(v)},grid:{color:'rgba(148,163,184,0.08)'}},
               y:{ticks:{color:'#64748b'},grid:{color:'rgba(148,163,184,0.08)'}}}}});
 }
 

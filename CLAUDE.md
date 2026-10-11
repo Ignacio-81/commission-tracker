@@ -173,7 +173,7 @@ src/
     ├── MarketConfigPanel        ← Panel lateral para editar tasas y comisiones manualmente
     ├── AlertsBanner             ← Alerta + notificación del navegador cuando ROI supera umbral
     ├── ExchangeRateCard         ← Card de tasa USD→ARS por billetera
-    ├── HistoryChart             ← Gráfico de historial de tasas (fuente: localStorage)
+    ├── HistoryChart             ← Gráfico de historial de tasas, últimos 60 días (fuente: localStorage vía lib/history.ts)
     ├── RatesTable               ← Tabla comparativa de comisiones
     ├── Header                   ← Cabecera con timestamp de último refresh y botón de refresh
     └── WalletCard               ← Card genérica de billetera
@@ -185,7 +185,7 @@ src/
 |---|---|
 | `marketConfig.v1` | Objeto `MarketConfig` con todos los valores del panel |
 | `marketConfig.manualKeys.v1` | Array de keys que el usuario editó manualmente |
-| `history.v1` | Array de hasta 5000 `HistoryPoint` (timestamp + tasas Belo, Binance P2P, MEP y Takenos; sin la mejor ruta, así no depende del monto) |
+| `history.v1` | Array de `HistoryPoint` de los **últimos 60 días** (retención por antigüedad, ver `lib/history.ts`; timestamp + tasas Belo, Binance P2P, MEP y Takenos; sin la mejor ruta, así no depende del monto). El gráfico promedia por intervalos (≤ ~400 puntos) |
 | `alerts.v1` | Config de alertas: umbral % y si las notificaciones están activas |
 
 ---

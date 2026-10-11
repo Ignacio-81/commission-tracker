@@ -11,11 +11,10 @@ import type {
   TransferStep,
   ComparisonResult,
 } from "../types/commission";
+import { appendHistory, type HistoryPoint } from "../lib/history";
 
 const CFG_KEY = "marketConfig.v1";
 const MANUAL_KEY = "marketConfig.manualKeys.v1";
-const HISTORY_KEY = "history.v1";
-const HISTORY_MAX = 5000;
 
 const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
 const step = (
@@ -23,13 +22,7 @@ const step = (
   fee: number, feeType: TransferStep["feeType"], amount: number, resultAmount: number | null,
 ): TransferStep => ({ from, to, type, fee, feeType, amount, resultAmount });
 
-export interface HistoryPoint {
-  t: number;
-  belo?: number | null;
-  binance?: number | null;
-  mep?: number | null;
-  takenos?: number | null;
-}
+export type { HistoryPoint } from "../lib/history";
 
 // Las tasas guardadas en localStorage se descartan al cargar: serían valores viejos.
 // De lo guardado solo se toman las comisiones editadas a mano: el resto sale siempre de DEFAULTS,
@@ -113,10 +106,7 @@ export function useCommissionData() {
         takenos: lr?.takenos ?? null,
       };
       if (point.belo == null && point.binance == null && point.mep == null && point.takenos == null) return;
-      const h: HistoryPoint[] = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-      h.push(point);
-      if (h.length > HISTORY_MAX) h.splice(0, h.length - HISTORY_MAX);
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+      appendHistory(point); // conserva los últimos 60 días
     } catch { /* noop */ }
   }, []);
 
