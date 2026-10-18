@@ -1,0 +1,64 @@
+{
+  "updatedAt": "2026-10-18T00:30:15.754Z",
+  "updatedEpoch": 1792283415,
+  "amountUSD": 3450,
+  "topRates": [
+    {
+      "name": "Binance P2P",
+      "rate": 1609.1
+    },
+    {
+      "name": "Belo",
+      "rate": 1606.35
+    },
+    {
+      "name": "Takenos",
+      "rate": 1603.07
+    }
+  ],
+  "bestRoute": {
+    "name": "Banco en USD → ARS (Takenos)",
+    "finalARS": 5530584.6,
+    "effectiveRate": 1603.07
+  },
+  "errors": [],
+  "display": {
+    "rows": [
+      {
+        "rank": "1",
+        "name": "Binance P2P",
+        "value": "$1.609,10",
+        "error": false,
+        "isError": 0,
+        "best": true,
+        "isBest": 1
+      },
+      {
+        "rank": "2",
+        "name": "Belo",
+        "value": "$1.606,35",
+        "error": false,
+        "isError": 0,
+        "best": false,
+        "isBest": 0
+      },
+      {
+        "rank": "3",
+        "name": "Takenos",
+        "value": "$1.603,07",
+        "error": false,
+        "isError": 0,
+        "best": false,
+        "isBest": 0
+      }
+    ],
+    "status": "",
+    "hasError": false,
+    "hasErrorNum": 0,
+    "updatedTime": "21:30",
+    "header": "Act. 21:30",
+    "routeName": "Banco en USD → Takenos",
+    "routeTotal": "$5.530.585",
+    "routeCaption": "por US$ 3.450"
+  }
+}
