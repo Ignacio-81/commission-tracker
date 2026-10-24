@@ -1,0 +1,64 @@
+{
+  "updatedAt": "2026-10-24T17:30:28.413Z",
+  "updatedEpoch": 1792863028,
+  "amountUSD": 3450,
+  "topRates": [
+    {
+      "name": "Binance P2P",
+      "rate": 1638.11
+    },
+    {
+      "name": "Belo",
+      "rate": 1636.46
+    },
+    {
+      "name": "Takenos",
+      "rate": 1624.01
+    }
+  ],
+  "bestRoute": {
+    "name": "Banco en USD → GrabrFi → Belo → ARS (Belo/MEP)",
+    "finalARS": 5624502.37,
+    "effectiveRate": 1630.29
+  },
+  "errors": [],
+  "display": {
+    "rows": [
+      {
+        "rank": "1",
+        "name": "Binance P2P",
+        "value": "$1.638,11",
+        "error": false,
+        "isError": 0,
+        "best": true,
+        "isBest": 1
+      },
+      {
+        "rank": "2",
+        "name": "Belo",
+        "value": "$1.636,46",
+        "error": false,
+        "isError": 0,
+        "best": false,
+        "isBest": 0
+      },
+      {
+        "rank": "3",
+        "name": "Takenos",
+        "value": "$1.624,01",
+        "error": false,
+        "isError": 0,
+        "best": false,
+        "isBest": 0
+      }
+    ],
+    "status": "",
+    "hasError": false,
+    "hasErrorNum": 0,
+    "updatedTime": "14:30",
+    "header": "Act. 14:30",
+    "routeName": "Banco en USD → GrabrFi → Belo",
+    "routeTotal": "$5.624.502",
+    "routeCaption": "por US$ 3.450"
+  }
+}
