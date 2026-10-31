@@ -1,0 +1,64 @@
+{
+  "updatedAt": "2026-10-31T15:00:36.627Z",
+  "updatedEpoch": 1793458836,
+  "amountUSD": 3450,
+  "topRates": [
+    {
+      "name": "Takenos",
+      "rate": 1631.17
+    },
+    {
+      "name": "AstroPay",
+      "rate": 1628.58
+    },
+    {
+      "name": "Belo",
+      "rate": 1624.51
+    }
+  ],
+  "bestRoute": {
+    "name": "Banco en USD → ARS (Takenos)",
+    "finalARS": 5627536.5,
+    "effectiveRate": 1631.17
+  },
+  "errors": [],
+  "display": {
+    "rows": [
+      {
+        "rank": "1",
+        "name": "Takenos",
+        "value": "$1.631,17",
+        "error": false,
+        "isError": 0,
+        "best": true,
+        "isBest": 1
+      },
+      {
+        "rank": "2",
+        "name": "AstroPay",
+        "value": "$1.628,58",
+        "error": false,
+        "isError": 0,
+        "best": false,
+        "isBest": 0
+      },
+      {
+        "rank": "3",
+        "name": "Belo",
+        "value": "$1.624,51",
+        "error": false,
+        "isError": 0,
+        "best": false,
+        "isBest": 0
+      }
+    ],
+    "status": "",
+    "hasError": false,
+    "hasErrorNum": 0,
+    "updatedTime": "12:00",
+    "header": "Act. 12:00",
+    "routeName": "Banco en USD → Takenos",
+    "routeTotal": "$5.627.537",
+    "routeCaption": "por US$ 3.450"
+  }
+}
