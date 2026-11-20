@@ -66,9 +66,7 @@ public class RatesWidget extends AppWidgetProvider {
             try {
                 String json = null;
                 try {
-                    json = download(JSON_URL);
-                    new JSONObject(json); // valida antes de guardar
-                    prefs(app).edit().putString(KEY_JSON, json).apply();
+                    json = fetchAndStore(app);
                 } catch (Exception e) {
                     json = null;
                 }
@@ -99,6 +97,25 @@ public class RatesWidget extends AppWidgetProvider {
     /** Redibuja el widget con el último JSON guardado (sin red). Lo usa la app al cambiar la selección. */
     static void rerenderFromCache(Context c) {
         render(c, prefs(c).getString(KEY_JSON, null), false);
+    }
+
+    /** Descarga widget.json, lo valida y lo guarda. Llamar fuera del hilo principal. */
+    static String fetchAndStore(Context c) throws Exception {
+        String json = download(JSON_URL);
+        new JSONObject(json); // valida antes de guardar
+        prefs(c).edit().putString(KEY_JSON, json).apply();
+        return json;
+    }
+
+    /** Hora de los datos guardados ("18:00") o null si no hay. Para la línea de estado de la app. */
+    static String cachedUpdatedTime(Context c) {
+        try {
+            String json = prefs(c).getString(KEY_JSON, null);
+            if (json == null) return null;
+            return new JSONObject(json).getJSONObject("display").optString("updatedTime", null);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static String download(String url) throws Exception {

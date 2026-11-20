@@ -3,6 +3,7 @@ package ar.walletpath.widget;
 import android.app.Activity;
 import android.os.Bundle;
 import android.util.TypedValue;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
@@ -46,10 +47,22 @@ public class MainActivity extends Activity {
             s.setChecked(RatesWidget.isEnabled(this, id));
             s.setOnCheckedChangeListener((btn, on) -> {
                 RatesWidget.setEnabled(this, id, on);
-                RatesWidget.rerenderFromCache(getApplicationContext());
+                RatesWidget.rerenderFromCache(getApplicationContext()); // inmediato, con lo guardado
+                sync(); // y además baja el JSON actual (si lo guardado es viejo, no trae datos por billetera)
             });
             col.addView(s);
         }
+
+        // Estado de los datos del widget: hora del JSON descargado o el error exacto.
+        status = new TextView(this);
+        status.setTextSize(14);
+        status.setPadding(0, dp(16), 0, dp(8));
+        col.addView(status);
+
+        Button refresh = new Button(this);
+        refresh.setText("Actualizar widget ahora");
+        refresh.setOnClickListener(b -> sync());
+        col.addView(refresh);
 
         TextView help = new TextView(this);
         help.setText("Para usar el widget: mantené apretada la pantalla de inicio → Widgets → "
@@ -63,6 +76,32 @@ public class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(col);
         setContentView(scroll);
+
+        sync(); // al abrir la app, el widget queda con datos frescos
+    }
+
+    private TextView status;
+
+    /** Descarga widget.json en otro hilo, redibuja el widget y muestra el resultado en `status`. */
+    private void sync() {
+        status.setText("Descargando datos…");
+        final android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            String msg;
+            try {
+                String json = RatesWidget.fetchAndStore(app);
+                RatesWidget.render(app, json, false);
+                msg = "✓ Widget actualizado · datos de las " + RatesWidget.cachedUpdatedTime(app);
+            } catch (Exception e) {
+                RatesWidget.rerenderFromCache(app);
+                String t = RatesWidget.cachedUpdatedTime(app);
+                msg = "⚠ No se pudo descargar (" + e.getClass().getSimpleName()
+                        + (e.getMessage() != null ? ": " + e.getMessage() : "") + ")"
+                        + (t != null ? "\nEl widget muestra los datos guardados de las " + t : "");
+            }
+            final String m = msg;
+            runOnUiThread(() -> status.setText(m));
+        }).start();
     }
 
     private int dp(int v) {
