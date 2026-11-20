@@ -1,5 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchLiveRates, type LiveRates } from "../lib/criptoya";
+import {
+  loadEnabledWallets, saveEnabledWallets, ROUTE_WALLET,
+  type EnabledWallets, type SelectableWallet,
+} from "../lib/wallets";
 import {
   DEFAULTS, withoutRates, applyLiveRates, missingRates,
   type MarketConfig,
@@ -47,7 +51,16 @@ function loadManual(): string[] {
 export function useCommissionData() {
   const [commissions, setCommissions] = useState<WalletCommission[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [fetchFailed, setFetchFailed] = useState(false);
+  const [enabledWallets, setEnabledWallets] = useState<EnabledWallets>(loadEnabledWallets);
+
+  const setWalletEnabled = useCallback((id: SelectableWallet, on: boolean) => {
+    setEnabledWallets((prev) => {
+      const next = { ...prev, [id]: on };
+      saveEnabledWallets(next);
+      return next;
+    });
+  }, []);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [marketConfig, setMarketConfigState] = useState<MarketConfig>(loadConfig);
   const [manualKeys, setManualKeys] = useState<string[]>(loadManual);
@@ -241,22 +254,25 @@ export function useCommissionData() {
       ],
     };
 
-    const paths = [astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath, takenosPath];
+    // Solo compiten (y se muestran) las rutas cuya billetera de destino está seleccionada.
+    const paths = [astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath, takenosPath]
+      .filter((x) => enabledWallets[ROUTE_WALLET[x.id]]);
     const best = paths.reduce<TransferPath | null>(
       (m, x) => (x.finalAmountARS != null && (!m || x.finalAmountARS > m.finalAmountARS!) ? x : m), null);
     // Ahorro de la mejor ruta vs. la referencia Banco en USD Wire → Santander → Dólar MEP (R4).
-    const savings = best && r4ARS != null ? best.finalAmountARS! - r4ARS : null;
+    // Si Santander no está seleccionado no hay referencia: no se calcula.
+    const savings = enabledWallets.santander && best && r4ARS != null ? best.finalAmountARS! - r4ARS : null;
 
     return {
-      astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath, takenosPath,
+      astropayPath, payoneerPath, grabrfiPath, santanderPath, binancePath, takenosPath, paths,
       recommendation: (best?.id ?? null) as ComparisonResult["recommendation"],
       savings, savingsPercentage: savings != null && r4ARS ? (savings / r4ARS) * 100 : null,
     };
-  }, [commissions]);
+  }, [commissions, enabledWallets]);
 
   const refreshData = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
+    setFetchFailed(false);
     try {
       const rates = await fetchLiveRates();
       ratesRef.current = rates;
@@ -266,15 +282,13 @@ export function useCommissionData() {
       setMarketConfigState(next);
       localStorage.setItem(CFG_KEY, JSON.stringify(next));
       setCommissions(buildCommissions(next, rates));
-      const missing = missingRates(next, rates);
-      setError(missing.length ? `No se pudo obtener la tasa en vivo de: ${missing.join(", ")}.` : null);
       setLastRefresh(new Date());
     } catch (e) {
       const next = applyLiveRates(cfgRef.current, null, manRef.current);
       cfgRef.current = next;
       setMarketConfigState(next);
       setCommissions(buildCommissions(next, null));
-      setError("No se pudieron cargar las tasas en vivo.");
+      setFetchFailed(true);
     } finally {
       setIsLoading(false);
     }
@@ -294,10 +308,19 @@ export function useCommissionData() {
     return () => { clearInterval(id); document.removeEventListener("visibilitychange", onVis); };
   }, [refreshData]);
 
+  // El aviso de tasas faltantes solo nombra billeteras seleccionadas (se recalcula al cambiar la selección).
+  const error = useMemo(() => {
+    if (fetchFailed) return "No se pudieron cargar las tasas en vivo.";
+    if (!lastRefresh) return null;
+    const missing = missingRates(marketConfig, liveRates, enabledWallets);
+    return missing.length ? `No se pudo obtener la tasa en vivo de: ${missing.join(", ")}.` : null;
+  }, [fetchFailed, lastRefresh, marketConfig, liveRates, enabledWallets]);
+
   return {
     commissions, isLoading, error, lastRefresh,
     refreshData, calculateComparison,
     marketConfig, setMarketConfig, resetMarketConfig, manualKeys,
+    enabledWallets, setWalletEnabled,
     binanceP2p: liveRates?.binance ?? null,
     mep: liveRates?.mep ?? null,
   };

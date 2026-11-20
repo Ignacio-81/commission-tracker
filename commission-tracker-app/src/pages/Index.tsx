@@ -8,8 +8,10 @@ import type { WalletCommission } from "../types/commission";
 import MarketConfigPanel from "../components/MarketConfigPanel";
 import ComparisonCalculator from "../components/ComparisonCalculator";
 import ArbitrageLoopCalculator from "../components/ArbitrageLoopCalculator";
-import HistoryChart from "../components/HistoryChart";
+import HistoryChart, { hasHistorySeries } from "../components/HistoryChart";
 import AlertsBanner from "../components/AlertsBanner";
+import WalletSelector from "../components/WalletSelector";
+import type { SelectableWallet } from "../lib/wallets";
 
 
 export default function Index() {
@@ -17,6 +19,7 @@ export default function Index() {
     commissions, isLoading, error, lastRefresh,
     refreshData, calculateComparison,
     marketConfig, setMarketConfig, resetMarketConfig, manualKeys,
+    enabledWallets, setWalletEnabled,
     binanceP2p,
   } = useCommissionData();
 
@@ -26,18 +29,7 @@ export default function Index() {
   const santander = find("santander");
   const takenos = find("takenos");
 
-  // Mejor conversión USD→ARS entre las tasas mostradas (incluye Binance P2P)
-  const bestRate = useMemo(() => {
-    const vals = [
-      binanceP2p,
-      astropay?.usdToArsRate,
-      belo?.usdToArsRate,
-      santander?.usdToArsRate,
-      takenos?.usdToArsRate,
-    ].filter((v): v is number => typeof v === "number" && v > 0);
-    return vals.length ? Math.max(...vals) : null;
-  }, [binanceP2p, astropay, belo, santander, takenos]);
-  // Todas las tasas USD→ARS con la misma jerarquía, de mayor a menor;
+  // Tasas USD→ARS de las billeteras seleccionadas, de mayor a menor;
   // las que no tienen tasa van al final
   const rateCards = useMemo<RateCardData[]>(() => {
     const fromWallet = (w?: WalletCommission): RateCardData[] =>
@@ -48,8 +40,19 @@ export default function Index() {
       ...fromWallet(santander),
       ...fromWallet(takenos),
       { key: "binance", name: "Binance P2P", rate: binanceP2p, source: "CriptoYa (P2P bid)", tone: "38 92% 50%" },
-    ].sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0));
-  }, [astropay, belo, santander, takenos, binanceP2p]);
+    ]
+      .filter((c) => enabledWallets[c.key as SelectableWallet])
+      .sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0));
+  }, [astropay, belo, santander, takenos, binanceP2p, enabledWallets]);
+
+  // Mejor conversión USD→ARS entre las tasas mostradas
+  const bestRate = useMemo(() => {
+    const vals = rateCards.map((c) => c.rate).filter((v): v is number => typeof v === "number" && v > 0);
+    return vals.length ? Math.max(...vals) : null;
+  }, [rateCards]);
+
+  // El puré vuelve a USD comprando MEP en Santander: sin Santander seleccionado no aplica.
+  const showPure = enabledWallets.santander;
 
   const isBest = (rate?: number | null) =>
     bestRate != null && rate != null && rate === bestRate;
@@ -58,8 +61,7 @@ export default function Index() {
   const arbRoi = useMemo(() => {
     if (!commissions.length || !santander?.usdToArsRate) return -Infinity;
     const r = calculateComparison(REF_AMOUNT);
-    const best = [r.astropayPath, r.payoneerPath, r.grabrfiPath, r.santanderPath, r.binancePath, r.takenosPath]
-      .find((x) => x.id === r.recommendation);
+    const best = r.paths.find((x) => x.id === r.recommendation);
     if (!best || best.finalAmountARS == null) return -Infinity;
     const divisor = santander.usdToArsRate * (1 + (santander.achOutgoing ?? 0) / 100);
     const finalUSD = divisor ? best.finalAmountARS / divisor : 0;
@@ -78,6 +80,7 @@ export default function Index() {
             onChange={setMarketConfig}
             onReset={resetMarketConfig}
             manualKeys={manualKeys}
+            enabled={enabledWallets}
           />
         }
       />
@@ -98,21 +101,27 @@ export default function Index() {
           </p>
         </section>
 
-        {commissions.length > 0 && Number.isFinite(arbRoi) && (
+        <WalletSelector enabled={enabledWallets} onToggle={setWalletEnabled} />
+
+        {showPure && commissions.length > 0 && Number.isFinite(arbRoi) && (
           <AlertsBanner roi={arbRoi} refreshKey={lastRefresh?.getTime() ?? 0} />
         )}
 
-        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          {rateCards.map((c) => (
-            <ExchangeRateCard key={c.key} card={c} highlight={isBest(c.rate)} />
-          ))}
-        </section>
+        {rateCards.length > 0 && (
+          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            {rateCards.map((c) => (
+              <ExchangeRateCard key={c.key} card={c} highlight={isBest(c.rate)} />
+            ))}
+          </section>
+        )}
 
-        <ComparisonCalculator onCalculate={calculateComparison} />
+        <ComparisonCalculator onCalculate={calculateComparison} enabled={enabledWallets} />
 
-        <HistoryChart tick={lastRefresh?.getTime() ?? 0} />
+        {hasHistorySeries(enabledWallets) && (
+          <HistoryChart tick={lastRefresh?.getTime() ?? 0} enabled={enabledWallets} />
+        )}
 
-        <ArbitrageLoopCalculator onCalculate={calculateComparison} santander={santander} />
+        {showPure && <ArbitrageLoopCalculator onCalculate={calculateComparison} santander={santander} />}
 
         <footer className="pt-8 text-center text-xs text-muted-foreground">
           Tasas FX en vivo vía CriptoYa (Belo USDC/ARS y AstroPay USDT/ARS = bid real; MEP/CCL = AL30 24hs). Las ediciones manuales del panel de Mercado tienen precedencia y se marcan "Manual".<br />

@@ -187,6 +187,25 @@ src/
 | `marketConfig.manualKeys.v1` | Array de keys que el usuario editó manualmente |
 | `history.v1` | Array de `HistoryPoint` de los **últimos 60 días** (retención por antigüedad, ver `lib/history.ts`; timestamp + tasas Belo, Binance P2P, MEP y Takenos; sin la mejor ruta, así no depende del monto). El gráfico promedia por intervalos (≤ ~400 puntos) |
 | `alerts.v1` | Config de alertas: umbral % y si las notificaciones están activas |
+| `enabledWallets.v1` | Billeteras de destino seleccionadas: `{astropay, belo, takenos, santander, binance}` → boolean (todas en `true` por defecto) |
+
+### Selección de billeteras
+
+El selector (`WalletSelector` en React, `#walletChips` en el HTML) define qué destinos entran en el
+cálculo. Lógica en `lib/wallets.ts` (replicada en el HTML). Lo no seleccionado se **excluye del
+ranking** y se **oculta**: rutas, tarjetas de tasa, series del histórico, avisos de tasa faltante y
+comisiones del panel ⚙️ Mercado que solo sirven a esa billetera (`feeFieldVisible()`).
+- Belo arrastra R2 y R3 (Payoneer y el ACH de GrabrFi solo existen para llegar a Belo).
+- Santander arrastra R4, la serie MEP, el banner de ahorro y todo el puré (calculadora + alertas),
+  porque el puré recompra USD al MEP de Santander.
+- El histórico sigue guardando todas las tasas; solo cambia qué se grafica.
+- `optimizeRoutes(amount, cfg, enabled?)`: el parámetro es opcional (sin él, calcula con todas).
+- **Widget de Android:** no lee la selección de la web. Tiene su propia selección en la app del
+  celular (pantalla principal del APK, `MainActivity`, guardada en `SharedPreferences` como
+  `wallet_<id>`). `widget.json` trae siempre **todas** las billeteras: además de `display` (vista sin
+  filtrar, para APKs viejos) incluye `wallets` (tasas ordenadas, con `id`) y `routes` (todas las rutas
+  de mejor a peor, con las billeteras que usan, de `RouteResult.wallets`). `RatesWidget.render()`
+  filtra con la selección y toma como mejor ruta la primera cuyas billeteras estén todas tildadas.
 
 ---
 

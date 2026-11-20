@@ -7,6 +7,7 @@ import { fetchLiveRates } from "../../commission-tracker-app/src/lib/criptoya";
 import { DEFAULTS, applyLiveRates, missingRates } from "../../commission-tracker-app/src/lib/marketConfig";
 import { REFERENCE_AMOUNT_USD } from "../../commission-tracker-app/src/lib/settings";
 import { optimizeRoutes } from "../../commission-tracker-app/src/lib/routeOptimizer";
+import { ALL_ENABLED, type EnabledWallets, type SelectableWallet } from "../../commission-tracker-app/src/lib/wallets";
 
 export const DEFAULT_AMOUNT = REFERENCE_AMOUNT_USD; // mismo monto de referencia que la web
 
@@ -25,26 +26,29 @@ function shortRoute(name: string): string {
   return nodes.join(" → ");
 }
 
-export async function buildPayload(amount = DEFAULT_AMOUNT) {
+// El JSON trae SIEMPRE todas las billeteras: la selección la hace cada celular en la app
+// (pantalla principal del APK), filtrando `wallets` y `routes`. `enabled` existe solo para pruebas.
+export async function buildPayload(amount = DEFAULT_AMOUNT, enabled: EnabledWallets = ALL_ENABLED) {
   const rates = await fetchLiveRates();
   const cfg = applyLiveRates({ ...DEFAULTS }, rates, []);
 
   // Misma jerarquía de tasas que las tarjetas de la web, de mayor a menor.
   const candidates = [
-    { name: "AstroPay", rate: cfg.astropayUsdtToArs },
-    { name: "Belo", rate: cfg.beloUsdtToArs },
-    { name: "Binance P2P", rate: cfg.binanceUsdtToArs },
-    { name: "Santander (MEP)", rate: rates.santander },
-    { name: "Takenos", rate: cfg.takenosUsdToArs },
-  ];
+    { id: "astropay", name: "AstroPay", rate: cfg.astropayUsdtToArs },
+    { id: "belo", name: "Belo", rate: cfg.beloUsdtToArs },
+    { id: "binance", name: "Binance P2P", rate: cfg.binanceUsdtToArs },
+    { id: "santander", name: "Santander (MEP)", rate: rates.santander },
+    { id: "takenos", name: "Takenos", rate: cfg.takenosUsdToArs },
+  ].filter((c) => enabled[c.id as SelectableWallet]);
   const ok = candidates
-    .filter((r): r is { name: string; rate: number } => typeof r.rate === "number" && r.rate > 0)
+    .filter((r): r is { id: string; name: string; rate: number } => typeof r.rate === "number" && r.rate > 0)
     .sort((a, b) => b.rate - a.rate);
   const failed = candidates.filter((r) => !(typeof r.rate === "number" && r.rate > 0));
   const topRates = ok.slice(0, 3).map((r) => ({ name: r.name, rate: round2(r.rate) }));
 
   // Mejor combinación = la misma que muestra la V2 (results[0]).
-  const best = optimizeRoutes(amount, cfg)[0] ?? null;
+  const allRoutes = optimizeRoutes(amount, cfg, enabled);
+  const best = allRoutes[0] ?? null;
   const now = new Date();
   // Hora local de Argentina (UTC-3 fija, sin horario de verano): el widget no convierte husos.
   const updatedTime = new Intl.DateTimeFormat("es-AR", {
@@ -68,7 +72,23 @@ export async function buildPayload(amount = DEFAULT_AMOUNT) {
       finalARS: round2(best.finalARS),
       effectiveRate: round2(best.effectiveRate),
     },
-    errors: missingRates(cfg, rates).map((s) => `Sin tasa en vivo: ${s}`),
+    errors: missingRates(cfg, rates, enabled).map((s) => `Sin tasa en vivo: ${s}`),
+    // Para la selección en el celular (APK con pantalla de billeteras). `display` sigue siendo la
+    // vista con todas, para APKs viejos que no filtran.
+    // wallets: todas, ordenadas igual que `display.rows` (con tasa de mayor a menor, después las caídas).
+    wallets: [...ok, ...failed].map((r) => ({
+      id: r.id,
+      name: r.name,
+      value: typeof r.rate === "number" && r.rate > 0 ? `$${fmt(r.rate, 2)}` : "Error: sin tasa",
+      ok: typeof r.rate === "number" && r.rate > 0,
+    })),
+    // routes: todas las rutas calculables, de mejor a peor, con las billeteras que usan.
+    // El widget muestra la primera cuyas billeteras estén todas tildadas.
+    routes: allRoutes.map((r) => ({
+      wallets: r.wallets,
+      name: shortRoute(r.name),
+      total: `$${fmt(r.finalARS, 0)}`,
+    })),
     // Textos ya formateados para el widget (es-AR)
     display: {
       rows,
@@ -78,8 +98,10 @@ export async function buildPayload(amount = DEFAULT_AMOUNT) {
       updatedTime,
       // Texto de la esquina superior derecha: aviso en rojo si falta una fuente.
       header: failed.length ? `⚠ ${failed.length} ${failed.length === 1 ? "fuente sin datos" : "fuentes sin datos"} · ${updatedTime}` : `Act. ${updatedTime}`,
-      routeName: best ? shortRoute(best.name) : "Error: sin rutas",
-      routeTotal: best ? `$${fmt(best.finalARS, 0)}` : "Error",
+      // Sin ruta y sin tasas caídas = la selección de wallets.config.ts no tiene rutas en el
+      // optimizador (p. ej. solo Santander, que no está en el grafo v2): no es un error.
+      routeName: best ? shortRoute(best.name) : failed.length ? "Error: sin rutas" : "Sin ruta para las billeteras elegidas",
+      routeTotal: best ? `$${fmt(best.finalARS, 0)}` : failed.length ? "Error" : "—",
       routeCaption: `por US$ ${fmt(amount, 0)}`,
     },
   };

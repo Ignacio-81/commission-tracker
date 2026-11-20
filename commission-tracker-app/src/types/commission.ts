@@ -32,6 +32,8 @@ export interface ComparisonResult {
   astropayPath: TransferPath; payoneerPath: TransferPath;
   grabrfiPath: TransferPath; santanderPath: TransferPath;
   binancePath: TransferPath; takenosPath: TransferPath;
+  /** Solo las rutas de billeteras seleccionadas (las que se muestran y compiten por la mejor) */
+  paths: TransferPath[];
   recommendation: "astropay" | "payoneer" | "grabrfi" | "santander" | "binance" | "takenos" | null;
   savings: number | null; savingsPercentage: number | null;
 }

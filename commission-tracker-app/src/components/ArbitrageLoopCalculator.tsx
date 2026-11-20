@@ -14,7 +14,7 @@ export default function ArbitrageLoopCalculator({ onCalculate, santander }: Prop
 
   const { best, finalUSD, profit, roi } = useMemo(() => {
     const res = onCalculate(amount || 0);
-    const paths: TransferPath[] = [res.astropayPath, res.payoneerPath, res.grabrfiPath, res.santanderPath, res.binancePath, res.takenosPath];
+    const paths: TransferPath[] = res.paths; // solo billeteras seleccionadas
     const best = paths.find((x) => x.id === res.recommendation) ?? null;
     const mep = santander?.usdToArsRate ?? 0;
     const divisor = mep * (1 + (santander?.achOutgoing ?? 0) / 100);

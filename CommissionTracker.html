@@ -130,6 +130,17 @@
   .read-box{padding:16px;border-radius:12px;background:hsl(var(--secondary));border:1px solid hsl(var(--border))}
   .read-box .v{font-size:22px;font-weight:800;color:hsl(var(--primary));margin-top:4px}
   .read-box .l{font-size:12px;color:hsl(var(--muted-foreground))}
+  /* selector de billeteras */
+  .wsel{padding:18px 20px}
+  .wsel-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .wsel-head h3{font-size:14px;font-weight:600;color:hsl(var(--muted-foreground))}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600;
+    cursor:pointer;border:1px solid hsl(var(--primary)/0.6);background:hsl(var(--primary)/0.1);color:hsl(var(--foreground));transition:.15s}
+  .chip.off{border-color:hsl(var(--border));background:hsl(var(--secondary)/0.4);color:hsl(var(--muted-foreground));text-decoration:line-through;opacity:.7}
+  .chip.off:hover{opacity:1}
+  .chip .ck{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:10px;color:hsl(var(--background));font-weight:900}
+  .empty-note{padding:12px 14px;border-radius:10px;border:1px solid hsl(var(--border));background:hsl(var(--secondary)/0.4);color:hsl(var(--muted-foreground));font-size:14px}
   .footer{margin-top:50px;text-align:center;color:hsl(var(--muted-foreground));font-size:12px}
   canvas{max-height:300px}
 
@@ -206,6 +217,12 @@
 
   <div id="errBox"></div>
 
+  <!-- Selector de billeteras: las no seleccionadas se ocultan y no entran en el cálculo -->
+  <section class="glass-card wsel">
+    <div class="wsel-head"><h3>Billeteras y bancos en el cálculo</h3><span class="muted" style="font-size:12px" id="wselCount"></span></div>
+    <div class="chips" id="walletChips"></div>
+  </section>
+
   <!-- Alerts banner -->
   <section id="alertBanner" style="margin-top:24px"></section>
 
@@ -228,27 +245,27 @@
   </section>
 
   <!-- Historical chart -->
-  <section class="glass-card flow">
-    <h3 class="sec">📈 Histórico — Tasas USD→ARS (Belo, Binance P2P, MEP, Takenos)</h3>
+  <section class="glass-card flow" id="histSection">
+    <h3 class="sec" id="histTitle">📈 Histórico — Tasas USD→ARS</h3>
     <p class="muted" id="histInfo" style="font-size:12px;margin:-4px 0 10px"></p>
     <canvas id="histChart"></canvas>
     <p class="muted" style="font-size:12px;margin-top:10px">Cada actualización guarda un punto. El histórico se acumula en este navegador y se conservan 60 días.</p>
   </section>
 
   <!-- Wallet fee cards -->
-  <section>
+  <section id="walletSection">
     <h3 class="sec">Comisiones por Billetera</h3>
     <div class="grid g4" id="walletCards"></div>
   </section>
 
   <!-- Rates table -->
-  <section class="glass-card flow">
+  <section class="glass-card flow" id="tableSection">
     <h3 class="sec">Tabla comparativa</h3>
     <div style="overflow-x:auto"><table id="ratesTable"></table></div>
   </section>
 
   <!-- Arbitrage -->
-  <section class="glass-card arb">
+  <section class="glass-card arb" id="arbSection">
     <h3 class="sec">🔄 Arbitrage Loop Calculator (Bucle / Puré)</h3>
     <div class="calc-input">
       <div class="field">
@@ -318,6 +335,46 @@ const FEE_FIELDS=[
   ['payoneerAchIn','Payoneer ACH in %'],['payoneerAchOutFixed','Payoneer retiro USD fijo'],['payoneerAchOutSmall','Payoneer retiro <umbral (USD)'],['payoneerSmallThreshold','Payoneer umbral monto chico (USD)']
 ];
 
+/* ---------- Selección de billeteras ---------- */
+// Mismo modelo que commission-tracker-app/src/lib/wallets.ts. Lo no seleccionado no entra en el
+// cálculo y se oculta (rutas, tasas, histórico, comisiones del panel, puré).
+const SELECTABLE_WALLETS=[
+  {id:'astropay',label:'AstroPay',tone:'var(--astropay)'},{id:'belo',label:'Belo',tone:'var(--belo)'},
+  {id:'takenos',label:'Takenos',tone:'var(--takenos)'},{id:'santander',label:'Santander',tone:'var(--santander)'},
+  {id:'binance',label:'Binance P2P',tone:'38 92% 50%'}
+];
+// Billetera de destino de cada ruta (R2 y R3 liquidan en Belo)
+const ROUTE_WALLET={astropay:'astropay',payoneer:'belo',grabrfi:'belo',santander:'santander',binance:'binance',takenos:'takenos'};
+let enabled={astropay:true,belo:true,takenos:true,santander:true,binance:true};
+try{const s=JSON.parse(localStorage.getItem('enabledWallets.v1')||'{}');
+  SELECTABLE_WALLETS.forEach(w=>{if(typeof s[w.id]==='boolean')enabled[w.id]=s[w.id];});}catch(e){}
+function toggleWallet(id){
+  enabled[id]=!enabled[id];
+  try{localStorage.setItem('enabledWallets.v1',JSON.stringify(enabled));}catch(e){}
+  renderAll();
+}
+// ¿La comisión del panel participa en alguna ruta visible? (Payoneer y ACH de GrabrFi solo
+// llevan a Belo; el envío USDT de GrabrFi a AstroPay/Binance; el wire de Mercury a Santander)
+function feeFieldVisible(k){
+  const e=enabled;
+  if(k==='mercuryAchOut')return e.astropay||e.belo||e.binance||e.takenos;
+  if(k==='mercuryWireOut')return e.santander;
+  if(k.startsWith('grabrfiAchOut'))return e.belo;
+  if(k.startsWith('grabrfiUsdtWithdraw'))return e.astropay||e.binance;
+  if(k==='astropayReceiveFee')return e.astropay;
+  if(k==='beloAchInFixed'||k.startsWith('payoneer'))return e.belo;
+  return true;
+}
+function renderWalletChips(){
+  document.getElementById('walletChips').innerHTML=SELECTABLE_WALLETS.map(w=>{
+    const on=enabled[w.id];
+    return `<button type="button" role="checkbox" aria-checked="${on}" class="chip ${on?'':'off'}" onclick="toggleWallet('${w.id}')">
+      <span class="ck" style="border:2px solid hsl(${w.tone});background:${on?`hsl(${w.tone})`:'transparent'}">${on?'✓':''}</span>${w.label}</button>`;
+  }).join('');
+  document.getElementById('wselCount').textContent=
+    SELECTABLE_WALLETS.filter(w=>enabled[w.id]).length+' de '+SELECTABLE_WALLETS.length+' seleccionadas';
+}
+
 const RATE_KEYS=['astropayUsdToArs','astropayUsdtToArs','beloUsdtToArs','binanceUsdtToArs','takenosUsdToArs'];
 let config={}, manualKeys=[];
 function loadConfig(){
@@ -344,28 +401,33 @@ function applyLiveRates(){
     binanceUsdtToArs:rates.binance,takenosUsdToArs:rates.takenos};
   RATE_KEYS.forEach(k=>{if(!manualKeys.includes(k))config[k]=live[k]??null;});
 }
+// Solo se reportan las tasas de billeteras seleccionadas
 function missingRates(){
   const m=[];
-  if(config.astropayUsdtToArs==null)m.push('AstroPay');
-  if(config.beloUsdtToArs==null)m.push('Belo');
-  if(config.binanceUsdtToArs==null)m.push('Binance P2P');
-  if(config.takenosUsdToArs==null)m.push('Takenos');
-  if(rates.mep==null)m.push('Dólar MEP (Santander)');
+  if(enabled.astropay&&config.astropayUsdtToArs==null)m.push('AstroPay');
+  if(enabled.belo&&config.beloUsdtToArs==null)m.push('Belo');
+  if(enabled.binance&&config.binanceUsdtToArs==null)m.push('Binance P2P');
+  if(enabled.takenos&&config.takenosUsdToArs==null)m.push('Takenos');
+  if(enabled.santander&&rates.mep==null)m.push('Dólar MEP (Santander)');
   return m;
 }
 
 /* ---------- Live rates ---------- */
 let rates={belo:null,astropay:null,binance:null,mep:null,ccl:null,cripto:null,payoneer:null,grabrfi:null,santander:null,takenos:null};
-let lastRefresh=null, isLoading=false;
+let lastRefresh=null, isLoading=false, fetchFailed=false;
 
 async function fetchJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(u);return r.json();}
-function showErr(msg){
-  document.getElementById('errBox').innerHTML=
-    '<div class="glass-card" style="padding:16px;border-color:hsl(var(--destructive)/0.5);color:hsl(var(--destructive))">'+msg+'</div>';
+// Se recalcula en cada render: al cambiar la selección, el aviso deja de nombrar billeteras ocultas.
+function renderErr(){
+  let msg='';
+  if(fetchFailed)msg='⚠ No se pudieron cargar las tasas en vivo.';
+  else if(lastRefresh){const miss=missingRates();if(miss.length)msg='⚠ No se pudo obtener la tasa en vivo de: '+miss.join(', ')+'.';}
+  document.getElementById('errBox').innerHTML=msg?
+    '<div class="glass-card" style="padding:16px;border-color:hsl(var(--destructive)/0.5);color:hsl(var(--destructive))">'+msg+'</div>':'';
 }
 async function refreshData(){
   if(isLoading)return; isLoading=true; document.getElementById('refIcon').className='spin';
-  document.getElementById('errBox').innerHTML='';
+  fetchFailed=false;
   try{
     const [dolar,astro,belo,binance,dolarCripto,tiendacrypto]=await Promise.all([
       fetchJSON('https://criptoya.com/api/dolar').catch(()=>null),
@@ -393,12 +455,10 @@ async function refreshData(){
     applyLiveRates();
     saveConfig();
     lastRefresh=new Date();
-    const miss=missingRates();
-    if(miss.length)showErr('⚠ No se pudo obtener la tasa en vivo de: '+miss.join(', ')+'.');
     snapshot();
   }catch(e){
     Object.keys(rates).forEach(k=>rates[k]=null); applyLiveRates();
-    showErr('⚠ No se pudieron cargar las tasas en vivo.');
+    fetchFailed=true;
   }finally{
     isLoading=false; document.getElementById('refIcon').className='';
     renderAll();
@@ -406,7 +466,13 @@ async function refreshData(){
 }
 
 /* ---------- Wallets ---------- */
+// Solo las billeteras seleccionadas y los intermediarios que llevan a alguna de ellas.
 function wallets(){
+  const e=enabled, need={mercury:Object.values(e).some(Boolean),payoneer:e.belo,grabrfi:e.belo||e.astropay||e.binance,
+    astropay:e.astropay,belo:e.belo,santander:e.santander,takenos:e.takenos};
+  return allWallets().filter(w=>need[w.slug]);
+}
+function allWallets(){
   return [
     {name:'Banco en USD',slug:'mercury',tone:'--mercury',achIn:0,achInTxt:'Gratis',achOut:config.mercuryAchOut,achOutTxt:config.mercuryAchOut?('$'+config.mercuryAchOut):'Gratis',rate:null},
     {name:'Payoneer',slug:'payoneer',tone:'--payoneer',achIn:config.payoneerAchIn,achInTxt:config.payoneerAchIn+'%',achOut:config.payoneerAchOutFixed,achOutTxt:'$'+config.payoneerAchOutFixed+' USD fijo',rate:rates.payoneer},
@@ -501,11 +567,13 @@ function calculateComparison(amount){
       step('Takenos (USD)','CBU/CVU (ARS)','conversion',0,'fixed',tk,r6ARS)
     ]};
   const paths={astropay:r1,payoneer:r2,grabrfi:r3,santander:r4,binance:r5,takenos:r6};
-  const arr=[r1,r2,r3,r4,r5,r6];
+  // Solo compiten (y se muestran) las rutas cuya billetera de destino está seleccionada
+  const arr=[r1,r2,r3,r4,r5,r6].filter(x=>enabled[ROUTE_WALLET[x.id]]);
   const best=arr.reduce((m,x)=>x.finalAmountARS!=null&&(!m||x.finalAmountARS>m.finalAmountARS)?x:m,null);
-  // Ahorro de la mejor ruta vs. la referencia Banco en USD Wire → Santander → Dólar MEP (R4)
-  const savings=best&&r4.finalAmountARS!=null?best.finalAmountARS-r4.finalAmountARS:null;
-  return {...paths,recommendation:best?best.id:null,best,savings,savingsPercentage:savings!=null?savings/r4.finalAmountARS*100:null};
+  // Ahorro de la mejor ruta vs. la referencia Banco en USD Wire → Santander → Dólar MEP (R4).
+  // Sin Santander seleccionado no hay referencia.
+  const savings=enabled.santander&&best&&r4.finalAmountARS!=null?best.finalAmountARS-r4.finalAmountARS:null;
+  return {...paths,list:arr,recommendation:best?best.id:null,best,savings,savingsPercentage:savings!=null?savings/r4.finalAmountARS*100:null};
 }
 
 /* ---------- Formatting ---------- */
@@ -519,12 +587,13 @@ const rateTxt=w=>w.rate?'$'+fmtRate(w.rate):(w.slug==='mercury'?'—':ERR('Error
 function isMan(k){return manualKeys.includes(k);}
 function renderRateCards(){
   const data=[
-    {name:'Astropay',rate:config.astropayUsdtToArs,man:isMan('astropayUsdtToArs'),tone:'--astropay'},
-    {name:'Belo',rate:config.beloUsdtToArs,man:isMan('beloUsdtToArs'),tone:'--belo'},
-    {name:'Binance P2P',rate:config.binanceUsdtToArs,man:isMan('binanceUsdtToArs'),tone:'--grabrfi'},
-    {name:'Santander (MEP)',rate:rates.santander,man:false,tone:'--santander'},
-    {name:'Takenos (est. dólar cripto)',rate:config.takenosUsdToArs,man:isMan('takenosUsdToArs'),tone:'--takenos'}
-  ];
+    {id:'astropay',name:'Astropay',rate:config.astropayUsdtToArs,man:isMan('astropayUsdtToArs'),tone:'--astropay'},
+    {id:'belo',name:'Belo',rate:config.beloUsdtToArs,man:isMan('beloUsdtToArs'),tone:'--belo'},
+    {id:'binance',name:'Binance P2P',rate:config.binanceUsdtToArs,man:isMan('binanceUsdtToArs'),tone:'--grabrfi'},
+    {id:'santander',name:'Santander (MEP)',rate:rates.santander,man:false,tone:'--santander'},
+    {id:'takenos',name:'Takenos (est. dólar cripto)',rate:config.takenosUsdToArs,man:isMan('takenosUsdToArs'),tone:'--takenos'}
+  ].filter(d=>enabled[d.id]);
+  document.getElementById('rateCards').style.display=data.length?'':'none';
   data.sort((a,b)=>(b.rate||0)-(a.rate||0)); // de mayor a menor tasa
   document.getElementById('rateCards').innerHTML=data.map(d=>`
     <div class="glass-card rate" style="border-left:3px solid hsl(var(${d.tone}))">
@@ -540,12 +609,16 @@ function stepLine(s){
 }
 function renderCalc(){
   const amt=parseFloat(document.getElementById('calcAmount').value)||0;
-  document.getElementById('beloNote').innerHTML=amt>BELO_MAX_PER_TX_USD
+  document.getElementById('beloNote').innerHTML=enabled.belo&&amt>BELO_MAX_PER_TX_USD
     ?'<p class="muted" style="margin:0 0 14px;padding:8px 12px;border:1px solid hsl(var(--warning)/0.4);border-radius:8px;color:hsl(var(--warning));font-size:13px">⚠ Belo: las transferencias de terceros tienen un máximo de US$ 4.000 por operación; montos mayores se revierten al remitente. Dividí el envío o usá otra ruta.</p>':'';
   const r=calculateComparison(amt);
-  const order=['astropay','payoneer','grabrfi','santander','binance','takenos'];
-  document.getElementById('calcCards').innerHTML=order.map(id=>{
-    const p=r[id], best=r.recommendation===id;
+  if(!r.list.length){
+    document.getElementById('calcCards').innerHTML='<div class="empty-note">No hay billeteras seleccionadas: elegí al menos una para comparar rutas.</div>';
+    document.getElementById('saveBanner').innerHTML='';
+    return;
+  }
+  document.getElementById('calcCards').innerHTML=r.list.map(p=>{
+    const best=r.recommendation===p.id;
     const charged=p.steps.filter(s=>s.fee>0);
     return `<div class="route-card ${best?'best':''}">
       <h4>${p.name} ${best?'<span class="badge up">↗ Mejor</span>':''}</h4>
@@ -556,7 +629,8 @@ function renderCalc(){
         ${p.finalAmountARS==null?'':`<div class="rate-line">1 USD = ${fmtRate(p.finalAmountARS/amt)} ARS</div>`}
       </div></div>`;
   }).join('');
-  document.getElementById('saveBanner').innerHTML=r.savings==null?`
+  // El ahorro se mide contra la ruta Santander: sin Santander (o si es la única ruta) no se muestra
+  document.getElementById('saveBanner').innerHTML=!enabled.santander||r.list.length<2?'':r.savings==null?`
     <div class="save-banner">
       <div><div class="muted" style="font-size:13px">Ahorro de la mejor ruta vs. Banco en USD Wire → Santander → Dólar MEP:</div>
       <div class="big">${ERR('Error: falta la tasa en vivo (MEP o la de la mejor ruta)')}</div></div>
@@ -568,7 +642,10 @@ function renderCalc(){
     </div>`;
 }
 function renderWallets(){
-  document.getElementById('walletCards').innerHTML=wallets().map(w=>`
+  const ws=wallets();
+  document.getElementById('walletSection').style.display=ws.length?'':'none';
+  document.getElementById('tableSection').style.display=ws.length?'':'none';
+  document.getElementById('walletCards').innerHTML=ws.map(w=>`
     <div class="glass-card rate" style="border-left:3px solid hsl(var(${w.tone}))">
       <div class="w-name" style="margin-bottom:14px"><span class="w-dot" style="background:hsl(var(${w.tone}))"></span>${w.name}</div>
       <div class="step"><span class="muted">ACH Entrada</span><span class="${w.achInTxt==='Gratis'?'free':''}">${w.achInTxt}</span></div>
@@ -587,6 +664,9 @@ function renderTable(){
     `<thead><tr><th>Billetera</th><th>ACH Entrada</th><th>ACH Salida</th><th>Tasa USD→ARS</th></tr></thead><tbody>${rows}</tbody>`;
 }
 function renderArb(){
+  // El puré vuelve a USD comprando MEP en Santander: sin Santander seleccionado no aplica
+  document.getElementById('arbSection').style.display=enabled.santander?'':'none';
+  if(!enabled.santander)return;
   const amt=parseFloat(document.getElementById('arbAmount').value)||0;
   const r=calculateComparison(amt);
   const mep=rates.santander;
@@ -617,7 +697,9 @@ function renderConfigPanel(){
   const f=(arr)=>arr.map(([k,lbl])=>`
     <div class="cfg-row"><label>${lbl} ${isMan(k)?'<span class="badge man">Manual</span>':''}</label>
     <input type="number" step="any" value="${config[k]}" onchange="setConfigKey('${k}',this.value)"/></div>`).join('');
-  document.getElementById('cfgFees').innerHTML='<h5>Comisiones</h5>'+f(FEE_FIELDS);
+  const fields=FEE_FIELDS.filter(([k])=>feeFieldVisible(k));
+  document.getElementById('cfgFees').innerHTML='<h5>Comisiones</h5>'+
+    (fields.length?f(fields):'<p class="muted" style="font-size:13px">No hay billeteras seleccionadas.</p>');
 }
 /* ---------- Alerts ---------- */
 let alertCfg={threshold:1,notify:false}, lastNotified=0;
@@ -636,7 +718,10 @@ function currentRoi(){
   return (r.best.finalAmountARS/mep-REFERENCE_AMOUNT_USD)/REFERENCE_AMOUNT_USD*100;
 }
 function renderAlert(){
-  const roi=currentRoi(); if(!isFinite(roi))return;
+  const box=document.getElementById('alertBanner');
+  const roi=enabled.santander?currentRoi():-Infinity;
+  if(!isFinite(roi)){box.innerHTML='';box.style.display='none';return;}
+  box.style.display='';
   const active=roi>=alertCfg.threshold;
   if(active&&alertCfg.notify&&!lastNotified&&typeof Notification!=='undefined'&&Notification.permission==='granted'){
     new Notification('CommissionTracker — Oportunidad de puré 📈',{body:`El arbitraje MEP rinde ${roi.toFixed(2)}% (umbral ${alertCfg.threshold}%).`});
@@ -664,7 +749,7 @@ function renderAlert(){
 
 function renderAll(){
   document.getElementById('lastUpd').textContent=lastRefresh?lastRefresh.toLocaleTimeString('es-AR'):'—';
-  renderRateCards();renderAlert();renderCalc();renderWallets();renderTable();renderArb();renderConfigPanel();renderChart();
+  renderWalletChips();renderErr();renderRateCards();renderAlert();renderCalc();renderWallets();renderTable();renderArb();renderConfigPanel();renderChart();
 }
 
 /* ---------- History / chart ---------- */
@@ -707,6 +792,13 @@ function chartHistory(now=Date.now(),maxPoints=400){
 }
 let chart=null;
 function renderChart(){
+  // Se guardan todas las tasas; solo se grafican las de billeteras seleccionadas (MEP = Santander)
+  const series=[['Belo','belo','hsl(45,93%,58%)','belo'],['Binance P2P','binance','hsl(38,92%,50%)','binance'],
+    ['MEP','mep','hsl(217,91%,60%)','santander'],['Takenos','takenos','hsl(150,65%,45%)','takenos']].filter(s=>enabled[s[3]]);
+  if(chart){chart.destroy();chart=null;}
+  document.getElementById('histSection').style.display=series.length?'':'none';
+  if(!series.length)return;
+  document.getElementById('histTitle').textContent='📈 Histórico — Tasas USD→ARS ('+series.map(s=>s[0]).join(', ')+')';
   const {rows,bucketMs}=chartHistory();
   const TZ='America/Argentina/Buenos_Aires';
   const fDay=t=>new Date(t).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',timeZone:TZ});
@@ -718,10 +810,7 @@ function renderChart(){
   document.getElementById('histInfo').textContent=`Últimos ${HIST_DAYS} días`+
     (rows.length?` · datos desde ${fDay(rows[0].t)} (${days} ${days===1?'día':'días'})`:'')+
     (rows.length>1?` · promedio cada ${fB(bucketMs)}`:'');
-  const series=[['Belo','belo','hsl(45,93%,58%)'],['Binance P2P','binance','hsl(38,92%,50%)'],
-    ['MEP','mep','hsl(217,91%,60%)'],['Takenos','takenos','hsl(150,65%,45%)']];
   const ctx=document.getElementById('histChart');
-  if(chart)chart.destroy();
   chart=new Chart(ctx,{type:'line',data:{datasets:series.map(([label,key,color])=>({
     label,data:rows.map(r=>({x:r.t,y:r[key]})),borderColor:color,spanGaps:true,tension:0.3,pointRadius:0,borderWidth:2}))},
     options:{responsive:true,animation:false,parsing:true,interaction:{mode:'index',intersect:false},

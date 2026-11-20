@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Settings2, RotateCcw, X } from "lucide-react";
 import type { MarketConfig, FeeKey } from "../hooks/useCommissionData";
+import { feeFieldVisible, type EnabledWallets } from "../lib/wallets";
 
 const FEE_FIELDS: [FeeKey, string][] = [
   ["mercuryAchOut", "Banco en USD ACH out (USD)"],
@@ -24,9 +25,12 @@ interface Props {
   onChange: (key: keyof MarketConfig, value: number) => void;
   onReset: () => void;
   manualKeys: string[];
+  /** Si se pasa, solo se muestran las comisiones que participan en rutas de billeteras seleccionadas */
+  enabled?: EnabledWallets;
 }
 
-export default function MarketConfigPanel({ config, onChange, onReset, manualKeys }: Props) {
+export default function MarketConfigPanel({ config, onChange, onReset, manualKeys, enabled }: Props) {
+  const fields = enabled ? FEE_FIELDS.filter(([k]) => feeFieldVisible(k, enabled)) : FEE_FIELDS;
   const [open, setOpen] = useState(false);
   const field = (arr: [FeeKey, string][]) =>
     arr.map(([k, label]) => (
@@ -70,7 +74,9 @@ export default function MarketConfigPanel({ config, onChange, onReset, manualKey
             </button>
             <div className="mt-6">
               <h5 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-primary">Comisiones</h5>
-              {field(FEE_FIELDS)}
+              {fields.length ? field(fields) : (
+                <p className="text-sm text-muted-foreground">No hay billeteras seleccionadas.</p>
+              )}
             </div>
           </aside>
         </>,

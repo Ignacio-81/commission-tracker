@@ -15,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { MarketConfig } from "./marketConfig";
+import type { EnabledWallets, SelectableWallet } from "./wallets";
 
 const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
 
@@ -33,6 +34,7 @@ export interface RouteResult {
   finalARS: number;      // monto final en pesos
   effectiveRate: number; // ARS por cada USD de entrada
   steps: RouteStep[];    // desglose paso a paso
+  wallets: SelectableWallet[]; // billeteras seleccionables que usa el camino (ver lib/wallets.ts)
 }
 
 // ── Nodos del grafo ──────────────────────────────────────────────────────────
@@ -48,6 +50,13 @@ const NODES: Record<string, NodeDef> = {
   ars_astropay:  { id: "ars_astropay",  label: "ARS (AstroPay)",     unit: "ARS", terminal: true },
   ars_binance:   { id: "ars_binance",   label: "ARS (Binance P2P)",  unit: "ARS", terminal: true },
   ars_takenos:   { id: "ars_takenos",   label: "ARS (Takenos)",      unit: "ARS", terminal: true },
+};
+
+// Nodos que pertenecen a una billetera seleccionable (ver lib/wallets.ts). Los intermediarios
+// (Banco en USD, GrabrFi, Payoneer) no se seleccionan: quedan sin salida si su destino se quita.
+const NODE_WALLET: Record<string, SelectableWallet> = {
+  belo: "belo", ars_belo: "belo",
+  ars_astropay: "astropay", ars_binance: "binance", ars_takenos: "takenos",
 };
 
 // ── Aristas del grafo ────────────────────────────────────────────────────────
@@ -206,8 +215,11 @@ function enumeratePaths(): EdgeDef[][] {
  * Calcula todas las rutas posibles para `amountUSD` y las devuelve ordenadas
  * de mayor a menor monto final en ARS. results[0] es la mejor combinación.
  */
-export function optimizeRoutes(amountUSD: number, cfg: MarketConfig): RouteResult[] {
-  const results = enumeratePaths().flatMap((edges): RouteResult[] => {
+export function optimizeRoutes(amountUSD: number, cfg: MarketConfig, enabled?: EnabledWallets): RouteResult[] {
+  // Un camino que pasa por una billetera no seleccionada se descarta entero.
+  const allowed = (edges: EdgeDef[]) =>
+    !enabled || edges.every((e) => { const w = NODE_WALLET[e.to]; return !w || enabled[w]; });
+  const results = enumeratePaths().filter(allowed).flatMap((edges): RouteResult[] => {
     let amount = amountUSD;
     const steps: RouteStep[] = [];
     const nodeIds = [START];
@@ -224,6 +236,7 @@ export function optimizeRoutes(amountUSD: number, cfg: MarketConfig): RouteResul
       finalARS: amount,
       effectiveRate: amountUSD > 0 ? amount / amountUSD : 0,
       steps,
+      wallets: [...new Set(nodeIds.map((id) => NODE_WALLET[id]).filter((w): w is SelectableWallet => !!w))],
     }];
   });
   return results.sort((a, b) => b.finalARS - a.finalARS);

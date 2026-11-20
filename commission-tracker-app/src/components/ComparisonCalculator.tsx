@@ -4,9 +4,11 @@ import type { ComparisonResult, TransferPath, TransferStep } from "../types/comm
 import { REFERENCE_AMOUNT_USD } from "../lib/settings";
 import { BELO_MAX_PER_TX_USD } from "../lib/marketConfig";
 import { fmtARS, fmtUSD, fmtNum } from "../lib/format";
+import type { EnabledWallets } from "../lib/wallets";
 
 interface Props {
   onCalculate: (amount: number) => ComparisonResult;
+  enabled: EnabledWallets;
 }
 
 function deduction(s: TransferStep) {
@@ -15,10 +17,10 @@ function deduction(s: TransferStep) {
   return "-US$ 0,00";
 }
 
-export default function ComparisonCalculator({ onCalculate }: Props) {
+export default function ComparisonCalculator({ onCalculate, enabled }: Props) {
   const [amount, setAmount] = useState(REFERENCE_AMOUNT_USD);
   const result = useMemo(() => onCalculate(amount || 0), [amount, onCalculate]);
-  const paths: TransferPath[] = [result.astropayPath, result.payoneerPath, result.grabrfiPath, result.santanderPath, result.binancePath, result.takenosPath];
+  const paths: TransferPath[] = result.paths; // solo billeteras seleccionadas
 
   return (
     <div className="glass-card rounded-xl p-6">
@@ -30,9 +32,15 @@ export default function ComparisonCalculator({ onCalculate }: Props) {
             className="w-full rounded-lg border border-border bg-input px-3.5 py-3 text-base outline-none focus:border-ring" />
         </div>
       </div>
-      {amount > BELO_MAX_PER_TX_USD && (
+      {enabled.belo && amount > BELO_MAX_PER_TX_USD && (
         <p className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-3.5 py-2 text-sm text-warning">
           ⚠ Belo: las transferencias de terceros tienen un máximo de US$ 4.000 por operación; montos mayores se revierten al remitente. Dividí el envío o usá otra ruta.
+        </p>
+      )}
+
+      {paths.length === 0 && (
+        <p className="rounded-lg border border-border bg-secondary/40 px-3.5 py-3 text-sm text-muted-foreground">
+          No hay billeteras seleccionadas: elegí al menos una para comparar rutas.
         </p>
       )}
 
@@ -80,6 +88,8 @@ export default function ComparisonCalculator({ onCalculate }: Props) {
         })}
       </div>
 
+      {/* El ahorro se mide contra la ruta Santander: sin Santander seleccionado no hay referencia */}
+      {enabled.santander && paths.length > 1 && (
       <div className="mt-5 flex items-center justify-between rounded-xl border border-success/40 bg-success/10 px-6 py-4">
         <div>
           <div className="text-sm text-muted-foreground">Ahorro de la mejor ruta vs. Banco en USD Wire → Santander → Dólar MEP:</div>
@@ -93,6 +103,7 @@ export default function ComparisonCalculator({ onCalculate }: Props) {
         </div>
         <TrendingUp className="h-7 w-7 text-success" />
       </div>
+      )}
     </div>
   );
 }

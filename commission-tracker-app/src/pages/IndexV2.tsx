@@ -7,6 +7,7 @@ import { fmtARS, fmtNum } from "../lib/format";
 import { optimizeRoutes, type RouteResult, type Unit } from "../lib/routeOptimizer";
 import Header from "../components/Header";
 import MarketConfigPanel from "../components/MarketConfigPanel";
+import WalletSelector from "../components/WalletSelector";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // v2 — Optimizador de rutas
@@ -22,13 +23,15 @@ export default function IndexV2() {
   const {
     isLoading, error, lastRefresh, refreshData,
     marketConfig, setMarketConfig, resetMarketConfig, manualKeys,
+    enabledWallets, setWalletEnabled,
   } = useCommissionData();
 
   const [amount, setAmount] = useState<number>(REFERENCE_AMOUNT_USD);
+  const anyEnabled = Object.values(enabledWallets).some(Boolean);
 
   const routes = useMemo(
-    () => (amount > 0 ? optimizeRoutes(amount, marketConfig) : []),
-    [amount, marketConfig],
+    () => (amount > 0 ? optimizeRoutes(amount, marketConfig, enabledWallets) : []),
+    [amount, marketConfig, enabledWallets],
   );
 
   const best = routes[0];
@@ -46,6 +49,7 @@ export default function IndexV2() {
             onChange={setMarketConfig}
             onReset={resetMarketConfig}
             manualKeys={manualKeys}
+            enabled={enabledWallets}
           />
         }
       />
@@ -67,6 +71,8 @@ export default function IndexV2() {
           </p>
         </section>
 
+        <WalletSelector enabled={enabledWallets} onToggle={setWalletEnabled} />
+
         {/* Input de monto */}
         <section className="glass-card rounded-2xl p-6">
           <label className="block text-sm font-semibold text-muted-foreground">
@@ -84,7 +90,7 @@ export default function IndexV2() {
           </div>
         </section>
 
-        {amount > BELO_MAX_PER_TX_USD && (
+        {enabledWallets.belo && amount > BELO_MAX_PER_TX_USD && (
           <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
             ⚠ Belo: las transferencias de terceros tienen un máximo de US$ 4.000 por operación; montos mayores se revierten al remitente. Dividí el envío o usá otra ruta.
           </div>
@@ -92,7 +98,10 @@ export default function IndexV2() {
 
         {amount > 0 && routes.length === 0 && (
           <div className="flex items-center gap-3 rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-destructive">
-            <AlertCircle className="h-5 w-5" /> No hay rutas calculables: faltan tasas en vivo.
+            <AlertCircle className="h-5 w-5" />
+            {anyEnabled
+              ? "No hay rutas calculables con las billeteras seleccionadas (faltan tasas en vivo, o la billetera no tiene ruta en el optimizador)."
+              : "No hay billeteras seleccionadas: elegí al menos una."}
           </div>
         )}
 

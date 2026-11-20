@@ -1,6 +1,7 @@
 // Config de mercado compartida por la app web (React) y el generador del widget (widget-data/).
 // Sin dependencias de React ni del navegador.
 import type { LiveRates } from "./criptoya";
+import type { EnabledWallets, SelectableWallet } from "./wallets";
 
 export interface MarketConfig {
   // Tasas en vivo: null = no se pudo traer de la web (no hay valor de respaldo).
@@ -83,12 +84,15 @@ export function applyLiveRates(cfg: MarketConfig, rates: LiveRates | null, manua
   return next;
 }
 
-const MISSING_LABELS: [RateKey | "mep", string][] = [
-  ["astropayUsdtToArs", "AstroPay"], ["beloUsdtToArs", "Belo"], ["binanceUsdtToArs", "Binance P2P"],
-  ["takenosUsdToArs", "Takenos"], ["mep", "Dólar MEP (Santander)"],
+const MISSING_LABELS: [RateKey | "mep", string, SelectableWallet][] = [
+  ["astropayUsdtToArs", "AstroPay", "astropay"], ["beloUsdtToArs", "Belo", "belo"],
+  ["binanceUsdtToArs", "Binance P2P", "binance"], ["takenosUsdToArs", "Takenos", "takenos"],
+  ["mep", "Dólar MEP (Santander)", "santander"],
 ];
-export function missingRates(cfg: MarketConfig, rates: LiveRates | null): string[] {
+/** Tasas faltantes. Con `enabled`, solo se reportan las de billeteras seleccionadas. */
+export function missingRates(cfg: MarketConfig, rates: LiveRates | null, enabled?: EnabledWallets): string[] {
   return MISSING_LABELS
+    .filter(([, , w]) => !enabled || enabled[w])
     .filter(([k]) => (k === "mep" ? rates?.mep == null : cfg[k] == null))
     .map(([, label]) => label);
 }

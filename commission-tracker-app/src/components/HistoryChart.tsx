@@ -4,13 +4,18 @@ import {
 } from "recharts";
 import { chartHistory, HISTORY_DAYS, type ChartRow } from "../lib/history";
 import { fmtNum } from "../lib/format";
+import type { EnabledWallets, SelectableWallet } from "../lib/wallets";
 
-const SERIES: { key: keyof ChartRow; name: string; color: string }[] = [
-  { key: "belo", name: "Belo", color: "hsl(45 93% 58%)" },
-  { key: "binance", name: "Binance P2P", color: "hsl(38 92% 50%)" },
-  { key: "mep", name: "MEP", color: "hsl(217 91% 60%)" },
-  { key: "takenos", name: "Takenos", color: "hsl(150 65% 45%)" },
+// El MEP es la tasa de Santander: se oculta si Santander no está seleccionado.
+const SERIES: { key: keyof ChartRow; name: string; color: string; wallet: SelectableWallet }[] = [
+  { key: "belo", name: "Belo", color: "hsl(45 93% 58%)", wallet: "belo" },
+  { key: "binance", name: "Binance P2P", color: "hsl(38 92% 50%)", wallet: "binance" },
+  { key: "mep", name: "MEP", color: "hsl(217 91% 60%)", wallet: "santander" },
+  { key: "takenos", name: "Takenos", color: "hsl(150 65% 45%)", wallet: "takenos" },
 ];
+
+/** ¿Hay alguna serie del histórico para las billeteras seleccionadas? */
+export const hasHistorySeries = (en: EnabledWallets) => SERIES.some((s) => en[s.wallet]);
 
 const DAY = 24 * 60 * 60 * 1000;
 const TZ = "America/Argentina/Buenos_Aires";
@@ -21,9 +26,11 @@ const fmtBucket = (ms: number) =>
   ms >= DAY ? "1 día" : ms >= 60 * 60 * 1000 ? `${ms / 3600000} h` : `${ms / 60000} min`;
 
 // Re-lee el histórico de localStorage. `tick` fuerza refresco cuando cambian las comisiones.
-export default function HistoryChart({ tick }: { tick: number }) {
+// Se siguen guardando todas las tasas; solo se grafican las de billeteras seleccionadas.
+export default function HistoryChart({ tick, enabled }: { tick: number; enabled: EnabledWallets }) {
   const [data, setData] = useState<ChartRow[]>([]);
   const [bucketMs, setBucketMs] = useState(0);
+  const series = SERIES.filter((s) => enabled[s.wallet]);
 
   useEffect(() => {
     const { rows, bucketMs } = chartHistory();
@@ -38,7 +45,7 @@ export default function HistoryChart({ tick }: { tick: number }) {
 
   return (
     <div className="glass-card rounded-xl p-6">
-      <h3 className="mb-1 text-xl font-bold">📈 Histórico — Tasas USD→ARS (Belo, Binance P2P, MEP, Takenos)</h3>
+      <h3 className="mb-1 text-xl font-bold">📈 Histórico — Tasas USD→ARS ({series.map((s) => s.name).join(", ")})</h3>
       <p className="mb-4 text-xs text-muted-foreground">
         Últimos {HISTORY_DAYS} días
         {first != null && <> · datos desde {fmtDay(first)} ({spanDays} {spanDays === 1 ? "día" : "días"})</>}
@@ -62,7 +69,7 @@ export default function HistoryChart({ tick }: { tick: number }) {
               labelFormatter={(t: number) => (bucketMs >= DAY ? fmtDay(t) : fmtDayTime(t))}
               formatter={(v: number, name: string) => [`${fmtNum(v)} ARS`, name]} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            {SERIES.map((s) => (
+            {series.map((s) => (
               <Line key={s.key} type="monotone" dataKey={s.key} name={s.name}
                 stroke={s.color} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
             ))}
