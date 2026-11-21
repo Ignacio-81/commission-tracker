@@ -1,0 +1,133 @@
+{
+  "updatedAt": "2026-11-21T15:45:32.264Z",
+  "updatedEpoch": 1795275932,
+  "amountUSD": 3450,
+  "topRates": [
+    {
+      "name": "Binance P2P",
+      "rate": 1767.11
+    },
+    {
+      "name": "Takenos",
+      "rate": 1765.1
+    },
+    {
+      "name": "Belo",
+      "rate": 1764.05
+    }
+  ],
+  "bestRoute": {
+    "name": "Banco en USD → ARS (Takenos)",
+    "finalARS": 6089588.1,
+    "effectiveRate": 1765.1
+  },
+  "errors": [],
+  "wallets": [
+    {
+      "id": "binance",
+      "name": "Binance P2P",
+      "value": "$1.767,11",
+      "ok": true
+    },
+    {
+      "id": "takenos",
+      "name": "Takenos",
+      "value": "$1.765,10",
+      "ok": true
+    },
+    {
+      "id": "belo",
+      "name": "Belo",
+      "value": "$1.764,05",
+      "ok": true
+    },
+    {
+      "id": "astropay",
+      "name": "AstroPay",
+      "value": "$1.760,35",
+      "ok": true
+    },
+    {
+      "id": "santander",
+      "name": "Santander (MEP)",
+      "value": "$1.649,43",
+      "ok": true
+    }
+  ],
+  "routes": [
+    {
+      "wallets": [
+        "takenos"
+      ],
+      "name": "Banco en USD → Takenos",
+      "total": "$6.089.588"
+    },
+    {
+      "wallets": [
+        "binance"
+      ],
+      "name": "Banco en USD → GrabrFi → USDT (GrabrFi) → Binance P2P",
+      "total": "$6.064.280"
+    },
+    {
+      "wallets": [
+        "belo"
+      ],
+      "name": "Banco en USD → GrabrFi → Belo",
+      "total": "$6.063.036"
+    },
+    {
+      "wallets": [
+        "astropay"
+      ],
+      "name": "Banco en USD → GrabrFi → USDT (GrabrFi) → AstroPay",
+      "total": "$6.041.069"
+    },
+    {
+      "wallets": [
+        "belo"
+      ],
+      "name": "Banco en USD → Payoneer → Belo",
+      "total": "$6.017.171"
+    }
+  ],
+  "display": {
+    "rows": [
+      {
+        "rank": "1",
+        "name": "Binance P2P",
+        "value": "$1.767,11",
+        "error": false,
+        "isError": 0,
+        "best": true,
+        "isBest": 1
+      },
+      {
+        "rank": "2",
+        "name": "Takenos",
+        "value": "$1.765,10",
+        "error": false,
+        "isError": 0,
+        "best": false,
+        "isBest": 0
+      },
+      {
+        "rank": "3",
+        "name": "Belo",
+        "value": "$1.764,05",
+        "error": false,
+        "isError": 0,
+        "best": false,
+        "isBest": 0
+      }
+    ],
+    "status": "",
+    "hasError": false,
+    "hasErrorNum": 0,
+    "updatedTime": "12:45",
+    "header": "Act. 12:45",
+    "routeName": "Banco en USD → Takenos",
+    "routeTotal": "$6.089.588",
+    "routeCaption": "por US$ 3.450"
+  }
+}
